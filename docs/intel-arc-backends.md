@@ -87,12 +87,25 @@ The local `/mnt/Data/Projects/Models` inventory was used for runtime checks:
 | Model | Vulkan | SYCL | OpenVINO GPU |
 | --- | --- | --- | --- |
 | Llama 3.2 1B Q4_K_M | pass | pass | pass |
+| Qwen2.5 Coder 7B Q4_K_M | not measured here | not measured here | pass (stateful generation) |
+| Qwen3.5 9B Q4_K_M | pass | pass | prompt warmup fails (`res=-3`) |
 | Gemma 4 12B QAT UD-Q4_K_XL | generated | generated | generated |
 | Qwen 3.8 27B GSQ IQ3_XXS MTP | generated | generated | not validated: initialization timeout |
 | Qwen 3.8 27B UD-Q2_K_XL | generated | generated | unsupported: GPU memory allocation |
 | Ternary Bonsai 2 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
 | Ternary Bonsai 2 27B PTQ1_0 | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
 | Bonsai 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+
+The OpenVINO GPU plugin is available on the B580. On Qwen2.5 Coder 7B Q4_K_M
+with stateful execution, the existing KV-state sequence-axis relayout measured
+2777.52±269.83 prompt and 39.86±0.34 decode tokens/s when disabled, versus
+2829.99±161.50 prompt and 43.63±0.28 decode tokens/s when enabled
+(p128/n64/r3). The decode gain was about 9.5%; the prompt difference was within
+the sample spread. Fixed-seed 32-token generation matched exactly. This relayout
+is already present in the fork and is enabled for OpenVINO GPU; disable it with
+`GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT=1` for comparison. The Qwen3.5 OpenVINO
+GPU run still fails its prompt warmup, so this Qwen2.5 result does not resolve
+the separate Qwen3.5 GatedDeltaNet limitation.
 
 Gemma uses a reasoning-style response format, so a short generation may begin
 with a thinking marker rather than the requested literal answer. Vulkan PQ2 uses
