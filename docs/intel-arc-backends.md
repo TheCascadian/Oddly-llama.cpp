@@ -55,6 +55,16 @@ was about 1% slower. A fixed-seed 24-token generation matched with fusion on
 and off. The newer mixed Q5_K/IQ4_XS plain-layout path is not included because
 the current model inventory has no matching model for model-level validation.
 
+SYCL FWHT uses a wide work-group kernel for Hadamard widths 1024, 2048, 4096,
+and 8192. `GGML_SYCL_DISABLE_FWHT_WIDE=1` disables these kernels for comparison.
+The B580 OpenCL PTQ1_0 Bonsai 2 27B benchmark at p128/n64/r3 measured
+215.93±0.85 prompt and 7.163±0.008 decode tokens/s with the wide kernels
+disabled, versus 234.18±0.56 prompt and 7.304±0.011 decode tokens/s with them
+enabled. This is about 8.4% faster prompt processing and 2.0% faster decode in
+that run. Fixed-seed CLI output matched with the kernels enabled and disabled,
+and the SYCL `MUL_MAT_HADAMARD` backend tests passed 27/27, including the
+supported wide widths.
+
 ## Router and WebUI
 
 Start the router with the models directory:
