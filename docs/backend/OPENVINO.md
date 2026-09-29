@@ -713,6 +713,7 @@ Boolean flags follow a uniform convention: set to a **positive integer** (e.g. `
 | `GGML_OPENVINO_COMPILED_MODEL_CACHE_DIR` | String | `not set` | Directory for the frontend compiled-model cache. When set, OpenVINO compiled models are exported as blobs and imported on later runs to skip weight requantization, graph conversion, and compilation for matching single-graph models. |
 | `GGML_OPENVINO_PREFILL_CHUNK_SIZE`| Integer   | `256`      | Token chunk size for **NPU** prefill (NPU-only; ignored on CPU/GPU). Must be a positive integer; otherwise the default is used. |
 | `GGML_OPENVINO_STATEFUL_EXECUTION`| Boolean   | `0`        | Enable stateful KV cache for better performance. Recommended on CPU, GPU.                                   |
+| `GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT` | Boolean | `0` | Disable the stateful KV sequence-axis layout optimization. Use `1` to compare the original layout when debugging or benchmarking. |
 | `GGML_OPENVINO_DISABLE_CACHE`     | Boolean   | `0`        | Disable the in-process compiled-model / decoder cache (cache is on by default). Set to `1` to disable.      |
 | `GGML_OPENVINO_DISABLE_KV_SLICE`  | Boolean   | `0`        | Disable the KV-cache input-tensor slicing optimization (slicing is on by default on CPU/GPU). Set to `1` to disable. |
 | `GGML_OPENVINO_MANUAL_GQA_ATTN`   | Boolean   | device-based | Tri-state. When **unset**, manual GQA attention is enabled by default on `GPU` and disabled on other devices. Set to a positive integer to force-enable, or `0` to force-disable. |
