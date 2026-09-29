@@ -32,7 +32,10 @@ namespace op {
 static OutputVector translate_gated_delta_net_ref(const NodeContext & context);
 
 OutputVector translate_gated_delta_net(const NodeContext & context) {
-    auto v_shape = context.get_input_shape(2).to_shape();  // [B, T, H_v, S_v]
+    const auto v_shape = context.get_input_shape(2);  // [B, T, H_v, S_v]
+    FRONT_END_OP_CONVERSION_CHECK(v_shape.rank().is_static() && v_shape.rank().get_length() == 4 &&
+                                      v_shape[2].is_static() && v_shape[3].is_static(),
+                                  "GATED_DELTA_NET requires static value head dimensions");
 
     // Fused GatedDeltaNet op only supports scalar gate (kda=0).
     // Fall back to reference implementation for per-key-dimension gating.
@@ -42,8 +45,8 @@ OutputVector translate_gated_delta_net(const NodeContext & context) {
 
     // const int64_t B = v_shape[0];
     // const int64_t T = v_shape[1];
-    const int64_t H_v = v_shape[2];
-    const int64_t S_v = v_shape[3];
+    const int64_t H_v = v_shape[2].get_length();
+    const int64_t S_v = v_shape[3].get_length();
 
     auto q = context.get_input(0);
     auto k = context.get_input(1);
@@ -74,8 +77,7 @@ OutputVector translate_gated_delta_net(const NodeContext & context) {
     if (context.get_view_input_size(2)) {
         // Same as l2_norm case 1
         v = std::make_shared<ov::op::v0::Squeeze>(v, ov::op::v0::Constant::create(ov::element::i64, {1}, {0}));
-        auto v_shape = context.get_input_shape(2).to_shape();
-        std::vector<int64_t> reshape_pattern = {0, 0, (int64_t) v_shape[2], (int64_t) v_shape[3]};
+        std::vector<int64_t> reshape_pattern = {0, 0, H_v, S_v};
         v = std::make_shared<ov::op::v1::Reshape>(
             v, ov::op::v0::Constant::create(ov::element::i64, {4}, reshape_pattern), true);
     }

@@ -45,13 +45,18 @@ OutputVector translate_set_rows(const NodeContext & context) {
     auto axes = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{}, {2});
 
     Output<Node> res;
+    auto dst_reshape = ov::as_type_ptr<ov::op::v1::Reshape>(dst.get_node_shared_ptr());
     if (context.is_stateful()) {
-        int concat_axis = 1;
-        int64_t dim2 = dst.get_partial_shape()[2].get_length();
-        int64_t dim3 = dst.get_partial_shape()[3].get_length();
+        const auto dst_stateful = dst_reshape ? dst_reshape->input_value(0) : dst;
+        const auto & dst_stateful_shape = dst_stateful.get_partial_shape();
+        FRONT_END_OP_CONVERSION_CHECK(dst_stateful_shape.rank().is_static() && dst_stateful_shape.rank().get_length() == 4 &&
+                                          dst_stateful_shape[2].is_static() && dst_stateful_shape[3].is_static(),
+                                      "Stateful SET_ROWS requires static cache row dimensions");
+        const int64_t dim2 = dst_stateful_shape[2].get_length();
+        const int64_t dim3 = dst_stateful_shape[3].get_length();
         data = std::make_shared<ov::op::v1::Reshape>(
             data, ov::op::v0::Constant::create(ov::element::i64, {4}, {(int64_t) 1, (int64_t) -1, dim2, dim3}), false);
-        res = std::make_shared<ov::op::v0::Concat>(OutputVector{dst, data}, concat_axis);
+        res = std::make_shared<ov::op::v0::Concat>(OutputVector{dst_stateful, data}, 1);
     } else if (multidim_indices) {
         auto updates_shape = std::make_shared<ov::op::v3::ShapeOf>(data, ov::element::i64);
 
@@ -75,11 +80,14 @@ OutputVector translate_set_rows(const NodeContext & context) {
         res = std::make_shared<ov::op::v3::ScatterUpdate>(dst, ind_squeezed, data_reshaped, axes);
     }
 
-    auto dst_reshape = std::dynamic_pointer_cast<ov::op::v1::Reshape>(dst.get_node_shared_ptr());
-    if (!multidim_indices && dst_reshape) {
+    if (!context.is_stateful() && !multidim_indices && dst_reshape) {
         // Fix the case of multiple sequences, reshape back to original shape [1, n_seq, ctx_per_seq, emb]
         // ctx_per_seq is not fixed due to llama-bench compatibility
         auto dst_shape_partial = dst_reshape->get_input_partial_shape(0);
+        FRONT_END_OP_CONVERSION_CHECK(dst_shape_partial.rank().is_static() && dst_shape_partial.rank().get_length() == 4 &&
+                                          dst_shape_partial[0].is_static() && dst_shape_partial[1].is_static() &&
+                                          dst_shape_partial[3].is_static(),
+                                      "SET_ROWS reshape requires static batch, sequence, and embedding dimensions");
         std::vector<int64_t> dst_shape = {dst_shape_partial[0].get_length(), dst_shape_partial[1].get_length(),
                                           dst_shape_partial[2].is_static() ? dst_shape_partial[2].get_length() : -1,
                                           dst_shape_partial[3].get_length()};
