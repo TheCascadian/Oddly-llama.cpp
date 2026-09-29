@@ -120,7 +120,7 @@ not currently available for repeat testing.
 | --- | --- | --- | --- | --- |
 | Llama 3.2 1B Q4_K_M | historical | pass | pass | pass |
 | Qwen2.5 Coder 7B Q4_K_M | present | not measured here | not measured here | pass (stateful generation) |
-| Qwen3.5 9B Q4_K_M | present | pass | pass | prompt warmup fails (`res=-3`) |
+| Qwen3.5 9B Q4_K_M | present | pass | pass | pass after GatedDeltaNet view-head fix at context 256; default-context CLI hit GPU resource limit |
 | Gemma 4 E2B Q4_K_XL | present | GQA8 path measured | GQA8 path measured | SWA path passes with decoder update |
 | Gemma 4 E2B Q8_K_XL | present | GQA8 path measured | GQA8 path measured | SWA p640 pass; A/B throughput neutral |
 | Gemma 4 12B QAT UD-Q4_K_XL | historical | generated | generated | generated |
@@ -149,6 +149,21 @@ throughput gain from this decoder change, but it confirms that the SWA path
 runs with both Q4 and Q8 weights. Long-prompt Q8 CLI output has not been
 compared.
 
+The Qwen3.5 OpenVINO failure was a repeated GQA expansion in the GatedDeltaNet
+translator. Its metadata shape reported 16 Q/K heads, while the resolved Q
+view already had 32; tiling from the metadata count expanded Q/K to 64 heads
+against 32 value heads, which OpenVINO rejected. The translator now derives
+the count from the resolved Q node and checks that the value-head count is
+divisible. Before the fix, both CPU and GPU graph conversion failed with this
+shape error. Afterward, B580 `OPENVINO0` `llama-bench` at p128/n8/r1 completed
+at 1078.85 prompt and 12.58 decode tokens/s; a fixed-seed single-turn CLI
+generated 8 tokens at 8.8 tokens/s with `-c 256 -b 128 -ub 128`. OpenVINO CPU
+also completed p128/n1. The default-context CLI exceeded GPU resources, so this
+does not yet establish stability at larger contexts. The synthetic
+`GATED_DELTA_NET` backend suite reported 13/18 supported cases passing both
+before and after this change; the same five existing accuracy/rows-mode cases
+failed on both revisions.
+
 The OpenVINO GPU plugin is available on the B580. On Qwen2.5 Coder 7B Q4_K_M
 with stateful execution, the existing KV-state sequence-axis relayout measured
 2777.52±269.83 prompt and 39.86±0.34 decode tokens/s when disabled, versus
@@ -156,9 +171,7 @@ with stateful execution, the existing KV-state sequence-axis relayout measured
 (p128/n64/r3). The decode gain was about 9.5%; the prompt difference was within
 the sample spread. Fixed-seed 32-token generation matched exactly. This relayout
 is already present in the fork and is enabled for OpenVINO GPU; disable it with
-`GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT=1` for comparison. The Qwen3.5 OpenVINO
-GPU run still fails its prompt warmup, so this Qwen2.5 result does not resolve
-the separate Qwen3.5 GatedDeltaNet limitation.
+`GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT=1` for comparison.
 
 Gemma uses a reasoning-style response format, so a short generation may begin
 with a thinking marker rather than the requested literal answer. Vulkan PQ2 uses

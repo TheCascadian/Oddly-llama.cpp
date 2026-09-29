@@ -33,7 +33,6 @@ static OutputVector translate_gated_delta_net_ref(const NodeContext & context);
 
 OutputVector translate_gated_delta_net(const NodeContext & context) {
     auto v_shape = context.get_input_shape(2).to_shape();  // [B, T, H_v, S_v]
-    auto q_shape = context.get_input_shape(0).to_shape();  // [B, T, H_k, S_k]
 
     // Fused GatedDeltaNet op only supports scalar gate (kda=0).
     // Fall back to reference implementation for per-key-dimension gating.
@@ -45,8 +44,6 @@ OutputVector translate_gated_delta_net(const NodeContext & context) {
     // const int64_t T = v_shape[1];
     const int64_t H_v = v_shape[2];
     const int64_t S_v = v_shape[3];
-    const int64_t H_k = q_shape[2];
-    // const int64_t S_k = q_shape[3];
 
     auto q = context.get_input(0);
     auto k = context.get_input(1);
@@ -54,6 +51,17 @@ OutputVector translate_gated_delta_net(const NodeContext & context) {
     auto g = context.get_input(3);
     auto beta = context.get_input(4);
     auto state = context.get_input(5);
+
+    // get_input_shape() reports the original GGML VIEW shape, but get_input() may
+    // already resolve that VIEW to a sliced or reshaped OpenVINO node. Use the
+    // materialized Q node's head count so GQA expansion is not applied twice.
+    const auto q_node_shape = q.get_partial_shape();
+    FRONT_END_OP_CONVERSION_CHECK(q_node_shape.rank().is_static() && q_node_shape.rank().get_length() == 4 &&
+                                      q_node_shape[2].is_static(),
+                                  "GATED_DELTA_NET requires a static Q head dimension");
+    const int64_t H_k = q_node_shape[2].get_length();
+    FRONT_END_OP_CONVERSION_CHECK(H_k > 0 && H_v % H_k == 0,
+                                  "GATED_DELTA_NET requires value heads to be divisible by Q heads");
 
     // ggml maps GQA heads in tiled order, while OV GDN maps repeated heads in grouped order.
     if (H_v != H_k) {
@@ -122,16 +130,21 @@ static OutputVector translate_gated_delta_net_ref(const NodeContext & context) {
     auto state = process_view_input_new(context, 5);
 
     auto v_shape = context.get_input_shape(2).to_shape();  // [B, T, H_v, S_v]
-    auto q_shape = context.get_input_shape(0).to_shape();  // [B, T, H_k, S_k]
     auto g_shape = context.get_input_shape(3).to_shape();  // [B, T, H_v, 1 or S_v]
 
     const int64_t B = v_shape[0];
     const int64_t T = v_shape[1];
     const int64_t H_v = v_shape[2];
     const int64_t S_v = v_shape[3];
-    const int64_t H_k = q_shape[2];
+    const auto q_node_shape = q.get_partial_shape();
+    FRONT_END_OP_CONVERSION_CHECK(q_node_shape.rank().is_static() && q_node_shape.rank().get_length() == 4 &&
+                                      q_node_shape[2].is_static(),
+                                  "GATED_DELTA_NET reference requires a static Q head dimension");
+    const int64_t H_k = q_node_shape[2].get_length();
     const bool kda = (g_shape[3] == (size_t) S_v);
 
+    FRONT_END_OP_CONVERSION_CHECK(H_k > 0 && H_v % H_k == 0,
+                                  "GATED_DELTA_NET reference requires value heads to be divisible by Q heads");
     const int64_t rq1 = H_v / H_k;  // head repeat factor
     const float scale = 1.0f / std::sqrt((float) S_v);
 
