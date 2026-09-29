@@ -15,6 +15,7 @@
 
 #include "common.hpp"
 #include "convert.hpp"
+#include "quants.hpp"
 
 typedef void (*dequantize_kernel_t)(const void * vx, const int64_t ib, const int iqs, dfloat2 & v);
 typedef void (*dequantize_kernel_t_reorder)(const void *d, const int64_t ib, const void *qs,
@@ -66,6 +67,14 @@ static __dpct_inline__ void dequantize_pq2_0(const void *vx, const int64_t ib,
     v.x() = ((dfloat)v.x() - 1.0f) * d;
     v.y() = ((dfloat)v.y() - 1.0f) * d;
 #endif // GGML_SYCL_F16
+}
+
+static __dpct_inline__ void dequantize_ptq1_0(const void *vx, const int64_t ib,
+                                              const int iqs, dfloat2 &v) {
+    const block_ptq1_0 *x = static_cast<const block_ptq1_0 *>(vx);
+    const float d = x[ib].d;
+    v.x() = static_cast<dfloat>(ggml_sycl_ptq1_0_trit(&x[ib], iqs + 0) * d);
+    v.y() = static_cast<dfloat>(ggml_sycl_ptq1_0_trit(&x[ib], iqs + 1) * d);
 }
 
 static __dpct_inline__ void dequantize_q4_0(const void *vx, const int64_t ib,

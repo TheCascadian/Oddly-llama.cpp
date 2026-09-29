@@ -48,7 +48,7 @@ global `GGML_OPENVINO_DEVICE` setting.
 
 ## Validation matrix
 
-The local `/home/oddsoul/models` inventory was used for runtime checks:
+The local `/mnt/Data/Models` inventory was used for runtime checks:
 
 | Model | Vulkan | SYCL | OpenVINO GPU |
 | --- | --- | --- | --- |
@@ -57,6 +57,7 @@ The local `/home/oddsoul/models` inventory was used for runtime checks:
 | Qwen 3.8 27B GSQ IQ3_XXS MTP | generated | generated | not validated: initialization timeout |
 | Qwen 3.8 27B UD-Q2_K_XL | generated | generated | unsupported: GPU memory allocation |
 | Ternary Bonsai 2 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+| Ternary Bonsai 2 27B PTQ1_0 | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
 | Bonsai 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
 
 Gemma uses a reasoning-style response format, so a short generation may begin
@@ -67,4 +68,5 @@ other shapes. Large weight tensors are split into block-aligned dispatches under
 the B580 workgroup limit. SYCL uses a native PQ2_0 MMVQ path, while OpenVINO
 still rejects these 27B files because the GPU allocation exceeds available
 memory. Runtime logs from these checks are kept in `artifacts/runtime/` in the
-development worktree.
+development worktree; `ptq1_0-sycl-device-openat.log` records the PTQ1_0 run's
+SYCL/OpenCL driver and B580 render-node opens.

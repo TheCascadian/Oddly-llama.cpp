@@ -693,6 +693,7 @@ template <> struct reorder_vec_dot_q_sycl<GGML_TYPE_Q6_K> {
 
 #define VDR_Q2_0_Q8_1_MMVQ 1
 #define VDR_PQ2_0_Q8_1_MMVQ 1
+#define VDR_PTQ1_0_Q8_1_MMVQ 1
 
 template <int vdr>
 static __dpct_inline__ float vec_dot_q2_0_q8_1_impl(
@@ -1010,6 +1011,28 @@ vec_dot_pq2_0_q8_1(const void *__restrict__ vbq,
                v + 0, u + 0, bpq2_0->d, bq8->ds) +
            vec_dot_q2_0_q8_1_impl<VDR_PQ2_0_Q8_1_MMVQ>(
                v + 1, u + 4, bpq2_0->d, bq8->ds);
+}
+
+static __dpct_inline__ float
+vec_dot_ptq1_0_q8_1(const void *__restrict__ vbq,
+                    const block_q8_1 *__restrict__ bq8_1, const int &iqs) {
+    const block_ptq1_0 *bptq1_0 = static_cast<const block_ptq1_0 *>(vbq);
+    const block_q8_1 *bq8 = &bq8_1[iqs];
+    int sumi = 0;
+
+#pragma unroll
+    for (int j = 0; j < QK8_1 / 4; ++j) {
+        const int base = iqs * QK8_1 + j * 4;
+        const int packed =
+            (ggml_sycl_ptq1_0_trit(bptq1_0, base + 0) & 0xff) |
+            ((ggml_sycl_ptq1_0_trit(bptq1_0, base + 1) & 0xff) << 8) |
+            ((ggml_sycl_ptq1_0_trit(bptq1_0, base + 2) & 0xff) << 16) |
+            ((ggml_sycl_ptq1_0_trit(bptq1_0, base + 3) & 0xff) << 24);
+        const int q8 = get_int_from_int8_aligned(bq8->qs, j);
+        sumi = dpct::dp4a(q8, packed, sumi);
+    }
+
+    return static_cast<float>(bptq1_0->d) * static_cast<float>(bq8->ds[0]) * sumi;
 }
 
 static __dpct_inline__ float

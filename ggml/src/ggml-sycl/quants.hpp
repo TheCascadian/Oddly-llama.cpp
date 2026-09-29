@@ -19,6 +19,31 @@
 #include "ggml-common.h"
 #include "ggml.h"
 
+// Decode one PTQ1_0 base-3 digit from the format's grouped byte layout.
+static inline int ggml_sycl_ptq1_0_trit(const block_ptq1_0 *x, const int e) {
+    uint8_t b;
+    int n;
+    if (e < 80) {
+        b = x->qs[e & 15];
+        n = e >> 4;
+    } else if (e < 120) {
+        const int t = e - 80;
+        b = x->qs[16 + (t & 7)];
+        n = t >> 3;
+    } else {
+        const int t = e - 120;
+        b = x->qh[t & 1];
+        n = t >> 1;
+    }
+    uint32_t value = b;
+    for (int i = 0; i < 4; ++i) {
+        if (i < n) {
+            value = (value * 3) & 0xff;
+        }
+    }
+    return static_cast<int>((value * 3) >> 8) - 1;
+}
+
 namespace ggml_sycl_reordered {
 
 // The reordered block moves quants (qs) and  scales(d) to two
