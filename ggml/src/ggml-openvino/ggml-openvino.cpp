@@ -11,7 +11,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
+#include <climits>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -64,6 +67,9 @@ struct ggml_backend_openvino_buffer_context {
     void * data;
     size_t size;
     bool is_remote;
+    // Non-null when data is backed by an unlinked file mapping instead of ggml_aligned_malloc.
+    void * spill_mapping = nullptr;
+    size_t spill_size = 0;
 
     // Wrapping of the buffer
     std::shared_ptr<ov::Tensor> ov_buffer;
@@ -99,10 +105,54 @@ struct ggml_backend_openvino_buffer_context {
             data = usm_tensor.get();
             ov_buffer = std::make_shared<ov::intel_gpu::ocl::USMTensor>(std::move(usm_tensor));
         } else {
-            data = ggml_aligned_malloc(size);
-            GGML_ASSERT(data);
-            memset(data, 0, size);
-            ov_buffer = std::make_shared<ov::Tensor>(ov::element::u8, ov::Shape{size}, data);
+            if (const char * spill_dir = ggml_openvino_getenv_str("GGML_OPENVINO_SPILL_DIR")) {
+#if !defined(_WIN32)
+                // A file-backed mapping lets the OS reclaim clean weight pages under memory pressure.
+                // Use real disk storage: a tmpfs directory would move the same pages into RAM.
+                char path[PATH_MAX];
+                const int path_len = snprintf(path, sizeof(path), "%s/ggml-ov-weights-%d-XXXXXX", spill_dir,
+                                              (int) getpid());
+                if (path_len < 0 || (size_t) path_len >= sizeof(path)) {
+                    GGML_LOG_ERROR("%s: spill path is too long: %s\n", __func__, spill_dir);
+                    return;
+                }
+                const int fd = mkstemp(path);
+                if (fd < 0) {
+                    GGML_LOG_ERROR("%s: mkstemp(%s) failed: %s\n", __func__, path, strerror(errno));
+                    return;
+                }
+                unlink(path);  // The mapping keeps the anonymous file alive until munmap.
+                if (ftruncate(fd, (off_t) size) != 0) {
+                    GGML_LOG_ERROR("%s: ftruncate(%zu) failed: %s\n", __func__, size, strerror(errno));
+                    close(fd);
+                    return;
+                }
+                void * mapping = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+                close(fd);
+                if (mapping == MAP_FAILED) {
+                    GGML_LOG_ERROR("%s: mmap(%zu) failed: %s\n", __func__, size, strerror(errno));
+                    return;
+                }
+                data = mapping;
+                spill_mapping = mapping;
+                spill_size = size;
+                ov_buffer = std::make_shared<ov::Tensor>(ov::element::u8, ov::Shape{size}, data);
+                GGML_LOG_INFO("%s: using file-backed buffer in %s (%zu MB)\n", __func__, spill_dir,
+                              size / 1024 / 1024);
+#else
+                GGML_LOG_WARN("%s: GGML_OPENVINO_SPILL_DIR is not supported on Windows; using regular memory\n",
+                              __func__);
+                data = ggml_aligned_malloc(size);
+                GGML_ASSERT(data);
+                memset(data, 0, size);
+                ov_buffer = std::make_shared<ov::Tensor>(ov::element::u8, ov::Shape{size}, data);
+#endif
+            } else {
+                data = ggml_aligned_malloc(size);
+                GGML_ASSERT(data);
+                memset(data, 0, size);
+                ov_buffer = std::make_shared<ov::Tensor>(ov::element::u8, ov::Shape{size}, data);
+            }
         }
 
         if (data == nullptr) {
@@ -125,7 +175,11 @@ struct ggml_backend_openvino_buffer_context {
             delete pair.second;
         }
         tensor_extras.clear();
-        if (!is_remote && data != nullptr) {
+        if (spill_mapping != nullptr) {
+#if !defined(_WIN32)
+            munmap(spill_mapping, spill_size);
+#endif
+        } else if (!is_remote && data != nullptr) {
             ggml_aligned_free(data, size);
         }
     }

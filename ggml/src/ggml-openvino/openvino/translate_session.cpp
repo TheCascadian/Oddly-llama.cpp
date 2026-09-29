@@ -401,8 +401,11 @@ std::shared_ptr<Model> TranslateSession::apply_transformations(std::shared_ptr<M
             const auto kv_param_res_names = ggml_model_decoder->get_kv_param_res_names();
             const auto kv_param_res_pairs = get_kv_param_res_pairs(model, kv_param_res_names);
             manager.register_pass<ov::pass::MakeStateful>(kv_param_res_pairs);
+            // The sequence-axis layout targets GPU-plugin in-place KV appends. Keep the
+            // existing CPU layout, where the matching A/B run showed no reliable gain.
             // MakeStateful creates the ReadValue/Assign pairs this pass rewrites.
-            if (!ggml_openvino_getenv_int("GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT")) {
+            if (ggml_openvino_get_device_name() == "GPU" &&
+                !ggml_openvino_getenv_int("GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT")) {
                 manager.register_pass<pass::KVStateSeqAxis>();
             }
         }
