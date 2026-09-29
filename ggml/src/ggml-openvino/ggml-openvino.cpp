@@ -9,6 +9,7 @@
 #include "ggml-quants.h"
 #include "ggml.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
@@ -895,6 +896,24 @@ static bool has_view_op_input(const ggml_tensor * op) {
     return false;
 }
 
+// OpenVINO slices whole elements per axis. Padded batch strides that do not
+// form a nested element grid cannot be represented by its slice operations.
+static bool has_strides_on_element_grid(const ggml_tensor * t) {
+    std::vector<size_t> strides;
+    for (int i = 0; i < GGML_MAX_DIMS; i++) {
+        if (t->ne[i] > 1) {
+            strides.push_back(t->nb[i]);
+        }
+    }
+    std::sort(strides.begin(), strides.end());
+    for (size_t i = 1; i < strides.size(); i++) {
+        if (strides[i - 1] == 0 || strides[i] % strides[i - 1] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool has_non_contiguous_view_input(const ggml_tensor * op) {
     for (int i = 0; i < GGML_MAX_SRC; i++) {
         if (op->src[i] == nullptr) {
@@ -1417,6 +1436,9 @@ static bool ggml_backend_openvino_device_supports_op(ggml_backend_dev_t dev, con
         }
         if (supported_types.find(src->type) == supported_types.end()) {
             // GGML_LOG_WARN("OpenVINO backend does not support tensor type %s\n", ggml_type_name(src->type));
+            return false;
+        }
+        if (!has_strides_on_element_grid(src)) {
             return false;
         }
         const bool is_supported_3d_moe_expert =
