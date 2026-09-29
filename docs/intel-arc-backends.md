@@ -31,6 +31,20 @@ selector is supplied. This is the stable path for the Arc B580 with the
 oneDNN-backed kernels. Set `ONEAPI_DEVICE_SELECTOR` explicitly when testing a
 different SYCL runtime path.
 
+## Level Zero API support
+
+`GGML_SYCL_SUPPORT_LEVEL_ZERO_API` defaults to `ON`. The SYCL target enables it
+when CMake finds both `level_zero/ze_api.h` and the Level Zero loader. CMake
+reports the resolved header and loader paths; the discovered header directory
+is added to the target include path. To select the Level Zero SYCL runtime for
+a test, set `ONEAPI_DEVICE_SELECTOR=level_zero:gpu` after sourcing oneAPI.
+
+The B580 is discovered by `sycl-ls` as `[level_zero:gpu:0]`. The Level Zero
+enabled fork builds and passes focused Q4_K SYCL backend operation tests on
+that device. A Qwen3.5-9B Q4_K_M end-to-end benchmark currently fails during
+`MUL_MAT` with `could not create a memory object`; use the default OpenCL path
+for full model runs until that runtime issue is resolved.
+
 ## Router and WebUI
 
 Start the router with the models directory:
@@ -48,7 +62,7 @@ global `GGML_OPENVINO_DEVICE` setting.
 
 ## Validation matrix
 
-The local `/mnt/Data/Models` inventory was used for runtime checks:
+The local `/mnt/Data/Projects/Models` inventory was used for runtime checks:
 
 | Model | Vulkan | SYCL | OpenVINO GPU |
 | --- | --- | --- | --- |
