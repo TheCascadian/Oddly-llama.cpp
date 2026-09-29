@@ -130,6 +130,21 @@ not currently available for repeat testing.
 | Ternary Bonsai 2 27B PTQ1_0 | present | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
 | Bonsai 27B PQ2_0 | historical | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
 
+The Vulkan graph now also fuses GELU, sigmoid, SiLU, or softplus followed by
+MUL into one dispatch. This covers f16/f32, broadcast and repeated operands,
+and view-mediated graphs. The B580 Vulkan backend-op suite passed 104/104
+cases. Runtime profiling confirmed 35 GELU_MUL dispatches for Gemma 4 E2B and
+24 SOFTPLUS_MUL dispatches for Qwen3.5 9B.
+
+Full-model throughput was effectively neutral in the longer p640/n8
+comparison: Gemma 4 E2B Q4 measured baseline 867.32±0.69 prompt / 54.24±0.20
+decode tokens/s and candidate 868.67±4.82 / 54.48±0.23; Q8 measured baseline
+837.35±3.88 / 29.49±0.01 and candidate 836.51±3.33 / 29.55±0.03. Short
+p128/n64 Q4 prompt was lower with the candidate (959.59±1.78 versus
+973.95±4.77), while Q8 prompt runs varied substantially on repeat; decode
+remained about the same. This reduces intermediate launches for a real model
+pattern, but these B580 model runs do not establish an end-to-end speedup.
+
 The selective OpenVINO SWA decoder update follows the relevant cache-geometry
 and per-layer KV-shape work from upstream. Gemma 4 E2B Q4_K_XL has a 512-token
 sliding window and mixed full/SWA layers. On the B580 `OPENVINO0`, matched
