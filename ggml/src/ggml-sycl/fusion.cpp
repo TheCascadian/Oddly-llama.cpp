@@ -1,6 +1,7 @@
 #include "fusion.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 
 // mul_mat(gate) + mul_mat(up) + GLU: graph shape and tensor properties only. Backend state
 // (weight layout, split buffers, DMMV) is checked by ggml_sycl_mul_mat_glu_mmvq_fused().
@@ -21,20 +22,26 @@ static bool ggml_sycl_should_fuse_mul_mat_glu(const ggml_tensor * gate, const gg
     const ggml_tensor * wg  = gate->src[0];
     const ggml_tensor * act = up->src[1];
 
-    // one set of block offsets and one quantized activation must serve both weights
-    if (wu->type != wg->type || !ggml_are_same_shape(wu, wg) || !ggml_are_same_stride(wu, wg)) {
+    const bool reorder_pair = (wu->type == GGML_TYPE_Q4_K && wg->type == GGML_TYPE_Q4_K) ||
+                              (wu->type == GGML_TYPE_Q5_K && wg->type == GGML_TYPE_Q5_K);
+    if (!reorder_pair || !ggml_are_same_shape(wu, wg) || !ggml_are_same_stride(wu, wg)) {
+        return false;
+    }
+    // Keep Q5_K fusion opt-in until it beats the fork's optimized MMVQ path on
+    // representative B580 workloads.
+    if (wu->type == GGML_TYPE_Q5_K && std::getenv("GGML_SYCL_ENABLE_Q5K_GLU_FUSION") == nullptr) {
         return false;
     }
     if (act != gate->src[1]) {
         return false;
     }
 
-    // only q4_K has a fused reorder GEMV so far, and it walks whole super-blocks
-    if (wu->type != GGML_TYPE_Q4_K || wu->ne[0] % QK_K != 0) {
+    // Both fused variants operate on whole QK_K super-blocks.
+    if (wu->ne[0] % QK_K != 0) {
         return false;
     }
 
-    // one 2D reorder-layout matrix in, a plain column stride out: no broadcast or padding
+    // One contiguous 2D matrix per weight, one contiguous activation and output.
     if (!ggml_is_contiguous(wu) || !ggml_is_contiguous(wg) || !ggml_is_contiguous(act) ||
         !ggml_is_contiguous(glu)) {
         return false;

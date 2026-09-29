@@ -45,6 +45,16 @@ that device. A Qwen3.5-9B Q4_K_M end-to-end benchmark currently fails during
 `MUL_MAT` with `could not create a memory object`; use the default OpenCL path
 for full model runs until that runtime issue is resolved.
 
+The SYCL backend has an experimental fused Q5_K gate-up GLU path alongside the
+fork's existing reordered Q4_K row-pair path. Enable Q5_K fusion with
+`GGML_SYCL_ENABLE_Q5K_GLU_FUSION=1`. On the available Qwen3.5 Q5_K model, B580
+OpenCL `llama-bench` at p128/n64/r5 measured 52.67±0.09 decode tokens/s with
+fusion off and 52.16±0.12 with it on; prompt processing was effectively
+unchanged (1017.1±2.4 vs 1018.3±4.1 tokens/s). It remains opt-in because decode
+was about 1% slower. A fixed-seed 24-token generation matched with fusion on
+and off. The newer mixed Q5_K/IQ4_XS plain-layout path is not included because
+the current model inventory has no matching model for model-level validation.
+
 ## Router and WebUI
 
 Start the router with the models directory:
