@@ -112,7 +112,7 @@ global `GGML_OPENVINO_DEVICE` setting.
 ## Validation matrix
 
 The table includes recorded checks against the current and earlier model
-inventories. Availability was rechecked on 2026-09-29 in both
+inventories. Availability was rechecked on 2026-09-30 in both
 `/mnt/Data/Projects/Models` and `/mnt/Data/Models`; rows marked historical are
 not currently available for repeat testing.
 
@@ -121,12 +121,25 @@ not currently available for repeat testing.
 | Llama 3.2 1B Q4_K_M | historical | pass | pass | pass |
 | Qwen2.5 Coder 7B Q4_K_M | present | not measured here | not measured here | pass (stateful generation) |
 | Qwen3.5 9B Q4_K_M | present | pass | pass | prompt warmup fails (`res=-3`) |
+| Gemma 4 E2B Q4_K_XL | present | GQA8 path measured | GQA8 path measured | SWA path passes with decoder update |
+| Gemma 4 E2B Q8_K_XL | present | GQA8 path measured | GQA8 path measured | not measured here |
 | Gemma 4 12B QAT UD-Q4_K_XL | historical | generated | generated | generated |
 | Qwen 3.8 27B GSQ IQ3_XXS MTP | historical | generated | generated | not validated: initialization timeout |
 | Qwen 3.8 27B UD-Q2_K_XL | historical | generated | generated | unsupported: GPU memory allocation |
 | Ternary Bonsai 2 27B PQ2_0 | present | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
 | Ternary Bonsai 2 27B PTQ1_0 | present | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
 | Bonsai 27B PQ2_0 | historical | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+
+The selective OpenVINO SWA decoder update follows the relevant cache-geometry
+and per-layer KV-shape work from upstream. Gemma 4 E2B Q4_K_XL has a 512-token
+sliding window and mixed full/SWA layers. On the B580 `OPENVINO0`, matched
+`llama-bench` p1024/n8/r3 measured baseline 7213.51±54.41 prompt and
+31.30±0.74 decode tokens/s; with the update it measured 7754.04±37.81 prompt
+and 34.15±1.05 decode tokens/s (+7.5% prompt, +9.1% decode). Both benchmark
+runs completed. A bounded fixed-seed `llama-cli --single-turn` call with a
+550-repeat prompt also completed with the update; the same call on the
+unmodified decoder failed with `Compute error`. This validates the SWA path
+for the E2B Q4 model; Q8 has not yet been repeated on OpenVINO.
 
 The OpenVINO GPU plugin is available on the B580. On Qwen2.5 Coder 7B Q4_K_M
 with stateful execution, the existing KV-state sequence-axis relayout measured
