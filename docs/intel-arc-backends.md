@@ -64,14 +64,25 @@ the B580, the isolated long-context operation (8 query heads, 1 KV head, width
 noise (42.22 vs 42.59 us/run). With oneDNN disabled, Q4 model decode measured
 86.04 vs 80.81 tokens/s while Q8 measured 57.93 vs 60.96 tokens/s, so the
 full-model result is mixed and does not show a consistent speedup. Both local
-Gemma 4 E2B Q4 and Q8 GGUFs passed the earlier short smoke through the default
-oneDNN route. With oneDNN disabled, a 32-token CLI generation segfaulted for
-both models on both the new and old tile dispatch, so fallback CLI inference
-remains unverified; the matching `llama-bench` A/B runs completed. The
+Gemma 4 E2B Q4 and Q8 GGUFs load in `llama-bench`, but CLI generation remains
+unverified. Earlier apparent CLI smoke success masked the process status behind
+`tail`; explicit forced-tile runs segfaulted for both models on both the new
+and old dispatch, and an explicitly selected Q4 SYCL run produced unbounded
+blank output and was stopped. The matching `llama-bench` A/B runs completed. The
 49,152-token backend correctness fixture exceeds the existing 5e-4 tolerance
 on both the old and new dispatch (errors 0.001095 and 0.001089 respectively);
 the long case remains a performance fixture only, with the passing KV=512 case
 covering correctness.
+
+SYCL oneDNN GEMM scratchpads now use scoped pool allocations rather than a
+persistent per-queue allocation, avoiding the pool free-order hazard addressed
+upstream. On the B580, the f16-by-f16 `MUL_MAT` focused cases passed 32/32. The
+full SYCL `MUL_MAT` sweep passed 1,105/1,105 after standard `TQ1_0` and
+`TQ2_0` were marked unsupported so they are skipped safely. Prism's distinct
+`PTQ1_0` and `PQ2_0` paths remain supported; both passed in that sweep.
+The `SET_ROWS` type allowlist now mirrors its implemented dispatch cases; its
+full SYCL sweep passed 515/515, with unsupported standard ternary rows skipped
+instead of reaching an abort.
 
 SYCL FWHT uses a wide work-group kernel for Hadamard widths 1024, 2048, 4096,
 and 8192. `GGML_SYCL_DISABLE_FWHT_WIDE=1` disables these kernels for comparison.

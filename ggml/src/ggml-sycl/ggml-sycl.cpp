@@ -6026,6 +6026,14 @@ static bool do_ggml_backend_sycl_device_supports_op(ggml_backend_dev_t dev, cons
                 }
 
                 ggml_type src0_type = op->src[0]->type;
+                ggml_type src1_type = op->src[1]->type;
+
+                // Standard TQ1_0/TQ2_0 are not implemented by this backend.
+                // Prism's PTQ1_0/PQ2_0 are separate formats and remain supported.
+                if (src0_type == GGML_TYPE_TQ1_0 || src0_type == GGML_TYPE_TQ2_0 ||
+                    src1_type == GGML_TYPE_TQ1_0 || src1_type == GGML_TYPE_TQ2_0) {
+                    return false;
+                }
 
                 // TODO: The configuration below needs more work to be supported with oneDNN
                 if (ggml_is_permuted(a) && !ggml_is_contiguous(a) &&
@@ -6088,6 +6096,41 @@ static bool do_ggml_backend_sycl_device_supports_op(ggml_backend_dev_t dev, cons
 
         case GGML_OP_SET_ROWS:
             {
+                // Keep this list in sync with the type switch in set_rows.cpp.
+                // Returning true for an unimplemented output type reaches GGML_ABORT there.
+                switch (op->type) {
+                    case GGML_TYPE_F32:
+                    case GGML_TYPE_F16:
+#ifdef GGML_SYCL_HAS_BF16
+                    case GGML_TYPE_BF16:
+#endif
+                    case GGML_TYPE_Q8_0:
+                    case GGML_TYPE_Q1_0:
+                    case GGML_TYPE_Q2_0:
+                    case GGML_TYPE_Q5_1:
+                    case GGML_TYPE_Q5_0:
+                    case GGML_TYPE_Q4_1:
+                    case GGML_TYPE_Q4_0:
+                    case GGML_TYPE_IQ4_NL:
+                    case GGML_TYPE_MXFP4:
+                    case GGML_TYPE_NVFP4:
+                    case GGML_TYPE_Q2_K:
+                    case GGML_TYPE_Q3_K:
+                    case GGML_TYPE_Q4_K:
+                    case GGML_TYPE_Q5_K:
+                    case GGML_TYPE_Q6_K:
+                    case GGML_TYPE_IQ2_XXS:
+                    case GGML_TYPE_IQ2_XS:
+                    case GGML_TYPE_IQ2_S:
+                    case GGML_TYPE_IQ3_XXS:
+                    case GGML_TYPE_IQ3_S:
+                    case GGML_TYPE_IQ1_S:
+                    case GGML_TYPE_IQ1_M:
+                    case GGML_TYPE_IQ4_XS:
+                        break;
+                    default:
+                        return false;
+                }
                 auto res = (op->src[0]->type == GGML_TYPE_F32 || op->src[0]->type == GGML_TYPE_F16 ||
                             op->src[0]->type == GGML_TYPE_BF16) &&
                            (op->src[1]->type == GGML_TYPE_I64 || op->src[1]->type == GGML_TYPE_I32);
@@ -6206,9 +6249,16 @@ static bool do_ggml_backend_sycl_device_supports_op(ggml_backend_dev_t dev, cons
                         src1_type == GGML_TYPE_IQ3_XXS ||
                         src1_type == GGML_TYPE_IQ3_S ||
                         src1_type == GGML_TYPE_IQ1_S ||
-                        src1_type == GGML_TYPE_IQ1_M) {
+                        src1_type == GGML_TYPE_IQ1_M ||
+                        src1_type == GGML_TYPE_TQ1_0 ||
+                        src1_type == GGML_TYPE_TQ2_0) {
                         return false;
                     }
+                }
+
+                if (src0_type == GGML_TYPE_TQ1_0 || src0_type == GGML_TYPE_TQ2_0 ||
+                    src1_type == GGML_TYPE_TQ1_0 || src1_type == GGML_TYPE_TQ2_0) {
+                    return false;
                 }
 
                 return true;
