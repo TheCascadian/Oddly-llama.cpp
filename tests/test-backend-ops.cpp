@@ -4516,9 +4516,11 @@ struct test_mul_mat : public test_case {
     const int64_t k_v; // size of k in memory, resulting in a non-contiguous view for k_v > k, no view for k_v == 0
     const uint32_t o; // number of outputs
     const bool src_overlap; // a and b are overlapping views of the same tensor
+    const int64_t m_v; // rows of a in memory, so batches are strided for m_v > m
+    const int64_t pad; // bytes of padding after each physical row batch
 
     std::string vars() override {
-        return VARS_TO_STR11(type_a, type_b, m, n, k, bs, nr, per, k_v, o, src_overlap);
+        return VARS_TO_STR13(type_a, type_b, m, n, k, bs, nr, per, k_v, o, src_overlap, m_v, pad);
     }
 
     double max_nmse_err() override {
@@ -4547,8 +4549,8 @@ struct test_mul_mat : public test_case {
             std::array<int64_t, 2> bs = {10, 10},
             std::array<int64_t, 2> nr = {2, 2},
             std::array<int64_t, 4> per = {0, 1, 2, 3},
-            int64_t k_v = 0, uint32_t o = 1, bool src_overlap = false)
-        : type_a(type_a), type_b(type_b), m(m), n(n), k(k), bs(bs), nr(nr), per(per), k_v(k_v), o(o), src_overlap(src_overlap) {}
+            int64_t k_v = 0, uint32_t o = 1, bool src_overlap = false, int64_t m_v = 0, int64_t pad = 0)
+        : type_a(type_a), type_b(type_b), m(m), n(n), k(k), bs(bs), nr(nr), per(per), k_v(k_v), o(o), src_overlap(src_overlap), m_v(m_v), pad(pad) {}
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
         // C^T = A * B^T: (k, m) * (k, n) => (m, n)
@@ -4559,6 +4561,7 @@ struct test_mul_mat : public test_case {
         if (npermuted > 0) {
             GGML_ASSERT(npermuted == 2);
             GGML_ASSERT(k_v == 0); // not handled
+            GGML_ASSERT(m_v == 0); // not handled
             GGML_ASSERT(!ggml_is_quantized(type_a) || per[0] == 0);
             GGML_ASSERT(!ggml_is_quantized(type_b) || per[0] == 0);
 
@@ -4584,6 +4587,7 @@ struct test_mul_mat : public test_case {
         } else if (src_overlap) {
             GGML_ASSERT(type_a == type_b);
             GGML_ASSERT(k_v == 0);
+            GGML_ASSERT(m_v == 0);
 
             // a and b are interleaved views of the same tensor: (e.g. fused QKV in MiniMax-01)
             ggml_tensor * base = ggml_new_tensor_4d(ctx, type_a, 2*k, std::max(m, n), bs[0]*nr[0], bs[1]*nr[1]);
@@ -4595,7 +4599,8 @@ struct test_mul_mat : public test_case {
             ggml_set_name(b, "b");
         } else {
             const int64_t k_physical = k_v == 0 ? k : k_v;
-            a = ggml_new_tensor_4d(ctx, type_a, k_physical, m, bs[0],       bs[1]);
+            const int64_t m_physical = m_v == 0 ? m : m_v + (pad != 0);
+            a = ggml_new_tensor_4d(ctx, type_a, k_physical, m_physical, bs[0], bs[1]);
             b = ggml_new_tensor_4d(ctx, type_b, k_physical, n, bs[0]*nr[0], bs[1]*nr[1]);
 
             if (!ggml_is_quantized(type_a)) {
@@ -4609,6 +4614,11 @@ struct test_mul_mat : public test_case {
                 GGML_ASSERT(k_v > k);
                 a = ggml_view_4d(ctx, a, k, m, bs[0],       bs[1],       a->nb[1], a->nb[2], a->nb[3], 0);
                 b = ggml_view_4d(ctx, b, k, n, bs[0]*nr[0], bs[1]*nr[1], b->nb[1], b->nb[2], b->nb[3], 0);
+            }
+            if (m_v != 0) {
+                GGML_ASSERT(m_v > m);
+                GGML_ASSERT(pad < (int64_t) a->nb[1]);
+                a = ggml_view_4d(ctx, a, k, m, bs[0], bs[1], a->nb[1], m_v*a->nb[1] + pad, a->nb[3], 0);
             }
             ggml_set_name(a, "a");
             ggml_set_name(b, "b");
@@ -4782,9 +4792,10 @@ struct test_mul_mat_id : public test_case {
     const int64_t m;
     const int64_t n;
     const int64_t k;
+    const int64_t m_v; // rows of as in memory, so experts are strided for m_v > m
 
     std::string vars() override {
-        return VARS_TO_STR8(type_a, type_b, n_mats, n_used, b, m, n, k);
+        return VARS_TO_STR9(type_a, type_b, n_mats, n_used, b, m, n, k, m_v);
     }
 
     double max_nmse_err() override {
@@ -4806,15 +4817,19 @@ struct test_mul_mat_id : public test_case {
 
     test_mul_mat_id(ggml_type type_a = GGML_TYPE_F32, ggml_type type_b = GGML_TYPE_F32,
             int n_mats = 8, int n_used = 2, bool b = false,
-            int64_t m = 32, int64_t n = 32, int64_t k = 32)
+            int64_t m = 32, int64_t n = 32, int64_t k = 32, int64_t m_v = 0)
         : type_a(type_a), type_b(type_b), n_mats(n_mats), n_used(n_used), b(b),
-            m(m), n(n), k(k) {
+            m(m), n(n), k(k), m_v(m_v) {
             GGML_ASSERT(n_used <= n_mats);
+            GGML_ASSERT(m_v == 0 || m_v > m);
         }
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
         // C^T = A * B^T: (k, m) * (k, n) => (m, n)
-        ggml_tensor * as = ggml_new_tensor_3d(ctx, type_a, k, m, n_mats);
+        ggml_tensor * as = ggml_new_tensor_3d(ctx, type_a, k, m_v == 0 ? m : m_v, n_mats);
+        if (m_v != 0) {
+            as = ggml_view_3d(ctx, as, k, m, n_mats, as->nb[1], as->nb[2], 0);
+        }
         ggml_set_name(as, "as");
 
         ggml_tensor * ids = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, n_mats, n);
@@ -9423,6 +9438,14 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 16, 32, 32, { 1,  1}, {1, 1}, {0, 1, 2, 3}, 64, 3));
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 64, 77, 77, {12,1}, {1,1}));
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 32, 4, 96, {3, 2}, {1, 1}, {0, 1, 2, 3}, 0, 1, true));
+    // Decoder attention reads the leading token rows from a larger, batched KV cache.
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 8, 1, 64, {8, 1}, {1, 1}, {0, 1, 2, 3}, 0, 1, false, 5120));
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F16, GGML_TYPE_F32, 8, 16, 64, {8, 1}, {1, 1}, {0, 1, 2, 3}, 0, 1, false, 5120));
+    // Also cover a batch stride whose byte size is not a multiple of the row stride.
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 8, 1, 64, {8, 1}, {1, 1}, {0, 1, 2, 3}, 0, 1, false, 16, 16));
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F16, GGML_TYPE_F32, 8, 16, 64, {8, 1}, {1, 1}, {0, 1, 2, 3}, 0, 1, false, 16, 16));
+    test_cases.emplace_back(new test_mul_mat_id(GGML_TYPE_F32, GGML_TYPE_F32, 4, 2, false, 8, 1, 64, 64));
+    test_cases.emplace_back(new test_mul_mat_id(GGML_TYPE_F16, GGML_TYPE_F32, 4, 2, false, 8, 16, 64, 64));
 
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q4_0, GGML_TYPE_F32, 576, 512, 576, {1,1}, {1,1}));
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q4_0, GGML_TYPE_F32, 1, 2048, 8192, {1,  1}, {1, 1}));
