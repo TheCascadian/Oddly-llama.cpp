@@ -122,7 +122,7 @@ not currently available for repeat testing.
 | Qwen2.5 Coder 7B Q4_K_M | present | not measured here | not measured here | pass (stateful generation) |
 | Qwen3.5 9B Q4_K_M | present | pass | pass | prompt warmup fails (`res=-3`) |
 | Gemma 4 E2B Q4_K_XL | present | GQA8 path measured | GQA8 path measured | SWA path passes with decoder update |
-| Gemma 4 E2B Q8_K_XL | present | GQA8 path measured | GQA8 path measured | not measured here |
+| Gemma 4 E2B Q8_K_XL | present | GQA8 path measured | GQA8 path measured | SWA p640 pass; A/B throughput neutral |
 | Gemma 4 12B QAT UD-Q4_K_XL | historical | generated | generated | generated |
 | Qwen 3.8 27B GSQ IQ3_XXS MTP | historical | generated | generated | not validated: initialization timeout |
 | Qwen 3.8 27B UD-Q2_K_XL | historical | generated | generated | unsupported: GPU memory allocation |
@@ -139,7 +139,15 @@ and 34.15±1.05 decode tokens/s (+7.5% prompt, +9.1% decode). Both benchmark
 runs completed. A bounded fixed-seed `llama-cli --single-turn` call with a
 550-repeat prompt also completed with the update; the same call on the
 unmodified decoder failed with `Compute error`. This validates the SWA path
-for the E2B Q4 model; Q8 has not yet been repeated on OpenVINO.
+for the E2B Q4 model.
+
+The Q8_K_XL variant also completed on `OPENVINO0` at p640/n8/r3, crossing the
+same 512-token window. Baseline measured 3651.50±142.23 prompt and 31.58±1.15
+decode tokens/s; the decoder update measured 3760.17±146.75 prompt and
+31.37±0.45 decode tokens/s. The spreads overlap, so Q8 shows no clear
+throughput gain from this decoder change, but it confirms that the SWA path
+runs with both Q4 and Q8 weights. Long-prompt Q8 CLI output has not been
+compared.
 
 The OpenVINO GPU plugin is available on the B580. On Qwen2.5 Coder 7B Q4_K_M
 with stateful execution, the existing KV-state sequence-axis relayout measured
