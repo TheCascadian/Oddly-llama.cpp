@@ -82,19 +82,22 @@ global `GGML_OPENVINO_DEVICE` setting.
 
 ## Validation matrix
 
-The local `/mnt/Data/Projects/Models` inventory was used for runtime checks:
+The table includes recorded checks against the current and earlier model
+inventories. Availability was rechecked on 2026-09-29 in both
+`/mnt/Data/Projects/Models` and `/mnt/Data/Models`; rows marked historical are
+not currently available for repeat testing.
 
-| Model | Vulkan | SYCL | OpenVINO GPU |
-| --- | --- | --- | --- |
-| Llama 3.2 1B Q4_K_M | pass | pass | pass |
-| Qwen2.5 Coder 7B Q4_K_M | not measured here | not measured here | pass (stateful generation) |
-| Qwen3.5 9B Q4_K_M | pass | pass | prompt warmup fails (`res=-3`) |
-| Gemma 4 12B QAT UD-Q4_K_XL | generated | generated | generated |
-| Qwen 3.8 27B GSQ IQ3_XXS MTP | generated | generated | not validated: initialization timeout |
-| Qwen 3.8 27B UD-Q2_K_XL | generated | generated | unsupported: GPU memory allocation |
-| Ternary Bonsai 2 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
-| Ternary Bonsai 2 27B PTQ1_0 | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
-| Bonsai 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+| Model | Availability | Vulkan | SYCL | OpenVINO GPU |
+| --- | --- | --- | --- | --- |
+| Llama 3.2 1B Q4_K_M | historical | pass | pass | pass |
+| Qwen2.5 Coder 7B Q4_K_M | present | not measured here | not measured here | pass (stateful generation) |
+| Qwen3.5 9B Q4_K_M | present | pass | pass | prompt warmup fails (`res=-3`) |
+| Gemma 4 12B QAT UD-Q4_K_XL | historical | generated | generated | generated |
+| Qwen 3.8 27B GSQ IQ3_XXS MTP | historical | generated | generated | not validated: initialization timeout |
+| Qwen 3.8 27B UD-Q2_K_XL | historical | generated | generated | unsupported: GPU memory allocation |
+| Ternary Bonsai 2 27B PQ2_0 | present | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+| Ternary Bonsai 2 27B PTQ1_0 | present | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
+| Bonsai 27B PQ2_0 | historical | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
 
 The OpenVINO GPU plugin is available on the B580. On Qwen2.5 Coder 7B Q4_K_M
 with stateful execution, the existing KV-state sequence-axis relayout measured
