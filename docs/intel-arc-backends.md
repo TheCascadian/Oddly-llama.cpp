@@ -55,6 +55,24 @@ was about 1% slower. A fixed-seed 24-token generation matched with fusion on
 and off. The newer mixed Q5_K/IQ4_XS plain-layout path is not included because
 the current model inventory has no matching model for model-level validation.
 
+The SYCL Flash Attention tile fallback now has an 8:1 GQA dispatch for 512-wide
+attention, matching Gemma 4 E2B global attention. This is used when the oneDNN
+Flash Attention route is disabled or unavailable (`GGML_SYCL_FA_ONEDNN=0`). On
+the B580, the isolated long-context operation (8 query heads, 1 KV head, width
+512, KV length 49,152) measured 563.35 us/run with the new dispatch versus
+1249.49 us/run with the prior dispatch. The short KV=512 operation was within
+noise (42.22 vs 42.59 us/run). With oneDNN disabled, Q4 model decode measured
+86.04 vs 80.81 tokens/s while Q8 measured 57.93 vs 60.96 tokens/s, so the
+full-model result is mixed and does not show a consistent speedup. Both local
+Gemma 4 E2B Q4 and Q8 GGUFs passed the earlier short smoke through the default
+oneDNN route. With oneDNN disabled, a 32-token CLI generation segfaulted for
+both models on both the new and old tile dispatch, so fallback CLI inference
+remains unverified; the matching `llama-bench` A/B runs completed. The
+49,152-token backend correctness fixture exceeds the existing 5e-4 tolerance
+on both the old and new dispatch (errors 0.001095 and 0.001089 respectively);
+the long case remains a performance fixture only, with the passing KV=512 case
+covering correctness.
+
 SYCL FWHT uses a wide work-group kernel for Hadamard widths 1024, 2048, 4096,
 and 8192. `GGML_SYCL_DISABLE_FWHT_WIDE=1` disables these kernels for comparison.
 The B580 OpenCL PTQ1_0 Bonsai 2 27B benchmark at p128/n64/r3 measured
