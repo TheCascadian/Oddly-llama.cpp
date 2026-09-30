@@ -5932,6 +5932,7 @@ struct test_conv_2d : public test_case {
     const int                    dilation1;
     // Whether the inputs are contiguous in the channel dim or the width dim
     const bool                   cwhn;
+    const int                    kernel_offset;
 
     // If true, the direct CONV_2D will be used in the graph, otherwise it
     // uses ggml_conv_2d:
@@ -5941,7 +5942,7 @@ struct test_conv_2d : public test_case {
     // IM2COL -> MUL_MM graph will be built.
 
     std::string vars() override {
-        return VARS_TO_STR10(ne_input, ne_kernel, type_kernel, stride0, stride1, padding0, padding1, dilation0, dilation1, cwhn);
+        return VARS_TO_STR11(ne_input, ne_kernel, type_kernel, stride0, stride1, padding0, padding1, dilation0, dilation1, cwhn, kernel_offset);
     }
 
     double max_nmse_err() override {
@@ -5977,7 +5978,7 @@ struct test_conv_2d : public test_case {
 
     test_conv_2d(std::array<int64_t, 4> ne_input  = { 64, 64, 16, 1 },
                  std::array<int64_t, 4> ne_kernel = { 3, 3, 1, 16 }, ggml_type type_kernel = GGML_TYPE_F32, int stride0 = 1,
-                 int stride1 = 1, int padding0 = 0, int padding1 = 0, int dilation0 = 1, int dilation1 = 1, bool cwhn = false) :
+                 int stride1 = 1, int padding0 = 0, int padding1 = 0, int dilation0 = 1, int dilation1 = 1, bool cwhn = false, int kernel_offset = 0) :
         ne_input(ne_input),
         ne_kernel(ne_kernel),
         type_kernel(type_kernel),
@@ -5987,13 +5988,25 @@ struct test_conv_2d : public test_case {
         padding1(padding1),
         dilation0(dilation0),
         dilation1(dilation1),
-        cwhn(cwhn) {}
+        cwhn(cwhn),
+        kernel_offset(kernel_offset) {}
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
         ggml_tensor * input = ggml_new_tensor(ctx, GGML_TYPE_F32, 4, ne_input.data());
         ggml_set_name(input, "input");
 
-        ggml_tensor * kernel = ggml_new_tensor(ctx, type_kernel, 4, ne_kernel.data());
+        ggml_tensor * kernel;
+        if (kernel_offset == 0) {
+            kernel = ggml_new_tensor(ctx, type_kernel, 4, ne_kernel.data());
+        } else {
+            const int64_t nelem = ne_kernel[0] * ne_kernel[1] * ne_kernel[2] * ne_kernel[3];
+            ggml_tensor * storage = ggml_new_tensor_1d(ctx, type_kernel, nelem + kernel_offset);
+            const size_t element_size = ggml_type_size(type_kernel);
+            kernel = ggml_view_4d(ctx, storage, ne_kernel[0], ne_kernel[1], ne_kernel[2], ne_kernel[3],
+                                  ne_kernel[0] * element_size, ne_kernel[0] * ne_kernel[1] * element_size,
+                                  ne_kernel[0] * ne_kernel[1] * ne_kernel[2] * element_size,
+                                  kernel_offset * element_size);
+        }
         ggml_set_name(kernel, "kernel");
 
         if (cwhn) {
@@ -8819,6 +8832,7 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
             }
         }
     }
+    test_cases.emplace_back(new test_conv_2d({ 19, 17, 8, 2 }, { 3, 3, 8, 17 }, GGML_TYPE_F16, 1, 1, 1, 1, 1, 1, false, 1));
     for (auto kernel_type : {GGML_TYPE_F32, GGML_TYPE_F16}) {
         test_cases.emplace_back(new test_conv_2d({ 256, 256, 192, 1 }, { 3, 3, 192, 96 }, kernel_type, 1, 1, 1, 1, 1, 1, false)); // bool cwhn = false
         test_cases.emplace_back(new test_conv_2d({ 256, 256, 192, 1 }, { 3, 3, 192, 96 }, kernel_type, 1, 1, 1, 1, 1, 1, true));  // bool cwhn = true
@@ -10410,6 +10424,7 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
                 kernel_type, 1, 1, 0, 0, 1, 1, true));    // bool cwhn = true
         }
     }
+    test_cases.emplace_back(new test_conv_2d({ 19, 17, 8, 2 }, { 3, 3, 8, 17 }, GGML_TYPE_F16, 1, 1, 1, 1, 1, 1, false, 1));
 
     struct conv3d_perf_case {
         int N, IC, ID, IH, IW, OC, KD, KH, KW, s0, s1, s2, p0, p1, p2, d0, d1, d2;

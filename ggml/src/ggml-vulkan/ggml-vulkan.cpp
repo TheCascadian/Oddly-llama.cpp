@@ -1939,6 +1939,9 @@ struct vk_op_conv2d_push_constants {
     // init_fastdiv_values constants for dividing by OW, OW*OH
     uint32_t OWmp;   uint32_t OWL;
     uint32_t OWOHmp; uint32_t OWOHL;
+    uint32_t knl_offset;
+    uint32_t src_offset;
+    uint32_t dst_offset;
 };
 
 template <> void init_pushconst_fastdiv(vk_op_conv2d_push_constants &p) {
@@ -1974,6 +1977,9 @@ struct vk_op_conv3d_push_constants {
     uint32_t OWmp;     uint32_t OWL;
     uint32_t OWOHmp;   uint32_t OWOHL;
     uint32_t OWOHODmp; uint32_t OWOHODL;
+    uint32_t knl_offset;
+    uint32_t src_offset;
+    uint32_t dst_offset;
 };
 
 template <> void init_pushconst_fastdiv(vk_op_conv3d_push_constants &p) {
@@ -2539,6 +2545,22 @@ template <> void init_pushconst_tensor_offsets(ggml_backend_vk_context * ctx, vk
     p.dst_offset = get_misalign_bytes(ctx, dst)  / ggml_type_size(dst->type);
 
     GGML_UNUSED(src1);
+    GGML_UNUSED(src2);
+    GGML_UNUSED(src3);
+}
+
+template <> void init_pushconst_tensor_offsets(ggml_backend_vk_context * ctx, vk_op_conv2d_push_constants &p, const ggml_tensor * src0, const ggml_tensor * src1, const ggml_tensor * src2, const ggml_tensor * src3, ggml_tensor * dst) {
+    p.knl_offset = get_misalign_bytes(ctx, src0) / ggml_type_size(src0->type);
+    p.src_offset = get_misalign_bytes(ctx, src1) / ggml_type_size(src1->type);
+    p.dst_offset = get_misalign_bytes(ctx, dst)  / ggml_type_size(dst->type);
+    GGML_UNUSED(src2);
+    GGML_UNUSED(src3);
+}
+
+template <> void init_pushconst_tensor_offsets(ggml_backend_vk_context * ctx, vk_op_conv3d_push_constants &p, const ggml_tensor * src0, const ggml_tensor * src1, const ggml_tensor * src2, const ggml_tensor * src3, ggml_tensor * dst) {
+    p.knl_offset = get_misalign_bytes(ctx, src0) / ggml_type_size(src0->type);
+    p.src_offset = get_misalign_bytes(ctx, src1) / ggml_type_size(src1->type);
+    p.dst_offset = get_misalign_bytes(ctx, dst)  / ggml_type_size(dst->type);
     GGML_UNUSED(src2);
     GGML_UNUSED(src3);
 }
