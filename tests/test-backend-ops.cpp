@@ -5671,9 +5671,10 @@ struct test_pool2d : public test_case {
     // padding
     const int p0;
     const int p1;
+    const bool is_param;
 
     std::string vars() override {
-        return VARS_TO_STR9(pool_type, type_input, ne_input, k0, k1, s0, s1, p0, p1);
+        return VARS_TO_STR10(pool_type, type_input, ne_input, k0, k1, s0, s1, p0, p1, is_param);
     }
 
     test_pool2d(ggml_op_pool pool_type = GGML_OP_POOL_AVG,
@@ -5681,12 +5682,15 @@ struct test_pool2d : public test_case {
             std::array<int64_t, 4> ne_input = {10, 10, 3, 1}, // [input_width, input_height, input_channels, 1]
             int k0 = 3, int k1 = 3,
             int s0 = 1, int s1 = 1,
-            int p0 = 1, int p1 = 1)
-        : pool_type(pool_type), type_input(type_input), ne_input(ne_input), k0(k0), k1(k1), s0(s0), s1(s1), p0(p0), p1(p1) {}
+            int p0 = 1, int p1 = 1, bool is_param = true)
+        : pool_type(pool_type), type_input(type_input), ne_input(ne_input), k0(k0), k1(k1), s0(s0), s1(s1), p0(p0), p1(p1),
+          is_param(is_param) {}
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
         ggml_tensor * input = ggml_new_tensor(ctx, type_input, 4, ne_input.data());
-        ggml_set_param(input);
+        if (is_param) {
+            ggml_set_param(input);
+        }
         ggml_set_name(input, "input");
 
         ggml_tensor * out = ggml_pool_2d(ctx, input, pool_type, k0, k1, s0, s1, p0, p1);
@@ -7136,17 +7140,18 @@ struct test_roll : public test_case {
     const int shift3;
     const int shift4;
     const bool permute;
+    const std::array<int64_t, 4> ne;
 
     std::string vars() override {
-        return VARS_TO_STR5(shift0, shift1, shift3, shift4, permute);
+        return VARS_TO_STR6(shift0, shift1, shift3, shift4, permute, ne);
     }
 
-    test_roll(int shift0 = 3, int shift1 = -2, int shift3 = 1, int shift4 = -1, bool permute = false)
-        : shift0(shift0), shift1(shift1), shift3(shift3), shift4(shift4), permute(permute) {}
+    test_roll(int shift0 = 3, int shift1 = -2, int shift3 = 1, int shift4 = -1, bool permute = false,
+              std::array<int64_t, 4> ne = {10, 5, 4, 3})
+        : shift0(shift0), shift1(shift1), shift3(shift3), shift4(shift4), permute(permute), ne(ne) {}
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
-        int64_t ne[4] = {10, 5, 4, 3};
-        ggml_tensor * a = ggml_new_tensor(ctx, GGML_TYPE_F32, 4, ne);
+        ggml_tensor * a = ggml_new_tensor(ctx, GGML_TYPE_F32, 4, ne.data());
         ggml_set_name(a, "a");
 
         if (permute) {
@@ -10379,6 +10384,12 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
 // Test cases for performance evaluation: should be representative of real-world use cases
 static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
     std::vector<std::unique_ptr<test_case>> test_cases;
+
+    // OpenVINO 2026.3 added these translators. Keep modest standalone cases so
+    // their B580 latency can be tracked even when installed model graphs do not use them.
+    test_cases.emplace_back(new test_pool2d(GGML_OP_POOL_AVG, GGML_TYPE_F32, {32, 32, 8, 1}, 3, 3, 2, 2, 1, 1, false));
+    test_cases.emplace_back(new test_roll(3, -2, 1, -1, false, {64, 64, 4, 3}));
+    test_cases.emplace_back(new test_glu(GGML_GLU_OP_GEGLU_QUICK, GGML_TYPE_F32, {256, 8, 1, 1}, 0, false));
 
     test_cases.emplace_back(new test_get_rows(GGML_TYPE_Q4_K, 256, 5, 4, 1, 1, false, false));
     test_cases.emplace_back(new test_get_rows(GGML_TYPE_Q4_K, 256, 5, 4, 1, 1, false, true));

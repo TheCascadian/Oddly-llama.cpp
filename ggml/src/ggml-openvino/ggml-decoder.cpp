@@ -345,6 +345,15 @@ int GgmlOvDecoder::compute_op_case(const ggml_tensor * node) const {
         }
         break;
     }
+    case GGML_OP_POOL_2D: {
+        const ggml_op_pool pool_mode = static_cast<ggml_op_pool>(node->op_params[0]);
+        if (pool_mode == GGML_OP_POOL_MAX) {
+            op_case = 1;
+        } else if (pool_mode == GGML_OP_POOL_AVG) {
+            op_case = 2;
+        }
+        break;
+    }
     case GGML_OP_ROPE: {
         const int mode = node->op_params[2];
         switch (mode) {
@@ -1902,6 +1911,8 @@ void GgmlOvDecoder::compute_node_dynamic_dims() {
         case GGML_OP_RMS_NORM:
         case GGML_OP_L2_NORM:
         case GGML_OP_NORM:
+        case GGML_OP_POOL_2D:
+        case GGML_OP_ROLL:
         case GGML_OP_ADD:
         case GGML_OP_SUB:
         case GGML_OP_GLU:
