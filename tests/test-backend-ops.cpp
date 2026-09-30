@@ -10172,6 +10172,8 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
 
     // Gemma4 E2B global-attention shape: 8 query heads / 1 KV head, head size 512.
     test_cases.emplace_back(new test_flash_attn_ext(512, 512, 1, {8, 1}, 512, 1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_F16, GGML_TYPE_F16));
+    // Gemma4 26B-A4B global-attention shape: 16 query heads / 2 KV heads (GQA ratio 8).
+    test_cases.emplace_back(new test_flash_attn_ext(512, 512, 2, {8, 1}, 512, 1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_F16, GGML_TYPE_F16));
 
     // q8_0 KV cases: decode and prompt batches, KV pad, permuted KV, feature flags, and long context
     test_cases.emplace_back(new test_flash_attn_ext(256, 256, 2, {16, 1},   113,   1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_Q8_0, GGML_TYPE_Q8_0));
@@ -10611,6 +10613,8 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
     // Gemma4 E2B global-attention shape: 8 query heads / 1 KV head, head size 512.
     test_cases.emplace_back(new test_flash_attn_ext(512, 512, 1, {8, 1}, 512, 1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_F16, GGML_TYPE_F16));
     test_cases.emplace_back(new test_flash_attn_ext(512, 512, 1, {8, 1}, 49152, 1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_F16, GGML_TYPE_F16));
+    // Gemma4 26B-A4B global-attention shape: 16 query heads / 2 KV heads (GQA ratio 8).
+    test_cases.emplace_back(new test_flash_attn_ext(512, 512, 2, {8, 1}, 49152, 1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_F16, GGML_TYPE_F16));
 
     // q8_0 KV cases with long context (decode and prompt)
     test_cases.emplace_back(new test_flash_attn_ext(256, 256, 2, {16, 1},   128, 1, true, false, 0, 0, GGML_PREC_F32, GGML_TYPE_Q8_0, GGML_TYPE_Q8_0));
