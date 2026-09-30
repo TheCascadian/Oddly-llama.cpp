@@ -1140,6 +1140,10 @@ static bool is_op_unsupported_case(const ggml_tensor * op) {
         if (op->ne[3] != 1) {
             return true;
         }
+        if (op->op == GGML_OP_GET_ROWS && ggml_is_quantized(op->src[0]->type) &&
+            op->src[0]->view_src != nullptr && op->src[0]->view_offs != 0) {
+            return true;
+        }
         if (op->op == GGML_OP_GET_ROWS && ggml_openvino_get_device_name() == "GPU" &&
             op->src[0]->type == GGML_TYPE_BF16) {
             return true;
