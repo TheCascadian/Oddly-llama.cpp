@@ -19,6 +19,7 @@
 #include "fattn-vec.hpp"
 #include "fattn.hpp"
 #include "fattn-onednn.hpp"
+#include "fattn-dec.hpp"
 
 
 #define FATTN_VEC_CASE(D, type_K, type_V)                                                                        \
@@ -98,6 +99,7 @@ enum best_fattn_kernel {
     BEST_FATTN_KERNEL_NONE     =   0,
     BEST_FATTN_KERNEL_VEC      = 100,
     BEST_FATTN_KERNEL_ONEDNN   = 150, // oneDNN SDPA: native F16 (PR #25222)
+    BEST_FATTN_KERNEL_DEC      = 160, // opt-in portable q4_0 direct-cache decode
     BEST_FATTN_KERNEL_TILE     = 200,
     BEST_FATTN_KERNEL_MKL      = 300,
 };
@@ -120,6 +122,12 @@ static best_fattn_kernel ggml_sycl_get_best_fattn_kernel(const int device, const
 
     const int gqa_ratio = Q->ne[2] / K->ne[2];
     GGML_ASSERT(Q->ne[2] % K->ne[2] == 0);
+
+    // Experimental direct q4_0 KV-cache decode, restricted to its validated
+    // Bonsai shape and disabled unless explicitly requested for A/B testing.
+    if (ggml_sycl_flash_attn_ext_dec_supported(dst)) {
+        return BEST_FATTN_KERNEL_DEC;
+    }
 
     float max_bias = 0.0f;
     memcpy(&max_bias, (const float *) KQV->op_params + 1, sizeof(float));
@@ -261,7 +269,12 @@ static best_fattn_kernel ggml_sycl_get_best_fattn_kernel(const int device, const
                 }
             }
         } else {
-            if (Q->ne[1] <= 2) {
+            // Quantized K/V decode can reuse each KV head across its query
+            // heads in TILE. Keep the previous per-head VEC path when GQA
+            // packing is not applicable; allow an environment override for
+            // backend A/B measurements.
+            static const bool quant_gqa_tile = ggml_sycl_get_env("GGML_SYCL_FA_QUANT_GQA_TILE", 0) != 0;
+            if (Q->ne[1] <= 2 && !(quant_gqa_tile && gqa_opt_applies)) {
                 // TILE is faster for quantized KV decode on Xe2 (BMG); keep VEC on untested archs
                 const gpu_arch arch = ggml_sycl_info().devices[device].hw_info.arch;
                 if (arch == gpu_arch::intel_gpu_bmg_g21 || arch == gpu_arch::intel_gpu_bmg_g31) {
@@ -292,6 +305,7 @@ void ggml_sycl_flash_attn_ext(ggml_backend_sycl_context & ctx, ggml_tensor * dst
         best_fattn_kernel k = ggml_sycl_get_best_fattn_kernel(ctx.device, dst);
         if (k == BEST_FATTN_KERNEL_MKL)  kname = "MKL";
         if (k == BEST_FATTN_KERNEL_ONEDNN)  kname = "ONEDNN";
+        if (k == BEST_FATTN_KERNEL_DEC)  kname = "Q4-DEC";
         if (k == BEST_FATTN_KERNEL_VEC)  kname = "VEC";
         int64_t delta = 0;
         if (Dk == 256) {
@@ -318,6 +332,9 @@ void ggml_sycl_flash_attn_ext(ggml_backend_sycl_context & ctx, ggml_tensor * dst
 #if GGML_SYCL_DNNL
             ggml_sycl_flash_attn_ext_onednn(ctx, dst);
 #endif
+            break;
+        case BEST_FATTN_KERNEL_DEC:
+            ggml_sycl_flash_attn_ext_dec(ctx, dst);
             break;
         case BEST_FATTN_KERNEL_TILE:
             ggml_sycl_flash_attn_ext_tile(ctx, dst);
@@ -349,6 +366,7 @@ void ggml_sycl_flash_attn_ext(ggml_backend_sycl_context & ctx, ggml_tensor * dst
             const char * kname = "???";
             best_fattn_kernel kb = ggml_sycl_get_best_fattn_kernel(ctx.device, dst);
             if (kb == BEST_FATTN_KERNEL_ONEDNN) kname = "ONEDNN";
+            if (kb == BEST_FATTN_KERNEL_DEC) kname = "Q4-DEC";
             if (kb == BEST_FATTN_KERNEL_MKL) kname = "MKL";
             if (kb == BEST_FATTN_KERNEL_TILE) kname = "TILE";
             if (kb == BEST_FATTN_KERNEL_VEC) kname = "VEC";

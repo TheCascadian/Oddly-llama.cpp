@@ -153,3 +153,6 @@ a.out.*
 
 AGENTS.local.md
 .pi/SYSTEM.md
+
+# Isolated runtime packages downloaded by scripts/run-sycl-level-zero.sh
+.runtime/

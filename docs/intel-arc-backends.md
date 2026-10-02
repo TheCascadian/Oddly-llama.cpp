@@ -94,6 +94,24 @@ that run. Fixed-seed CLI output matched with the kernels enabled and disabled,
 and the SYCL `MUL_MAT_HADAMARD` backend tests passed 27/27, including the
 supported wide widths.
 
+## Bonsai and long-context paths
+
+These paths were measured on the B580 with `Ternary-Bonsai-2-27B-PTQ1_0-mtp.gguf`.
+
+| Path | Enable flag | Result and status |
+| --- | --- | --- |
+| SYCL W8A8 prompt matmul | `GGML_SYCL_QUANT_W8A8=1` | Earlier p512 A/B measured 389.7 vs 232.0 tokens/s over two repetitions. A fixed-seed 128-token CLI generation matched exactly on and off. At 115K, W8A8 prefill failed with OpenCL `OUT_OF_RESOURCES` at both `ubatch=512` and `ubatch=256`; keep it off for the 115K configuration. |
+| MTP deferred catch-up | `LLAMA_MTP_DEFERRED_CATCHUP=1` | Eager and deferred runs produced identical text for 64 generated tokens. One run measured 14.5 t/s eager and 12.9 t/s deferred, so there is no proven speed gain yet; deferred mode is opt-in. `LLAMA_MTP_EAGER_CATCHUP=1` forces the original eager schedule. |
+| SYCL blocked GDN | `GGML_SYCL_GDN_BLOCKED=1` | A synthetic supported operation (4 heads, width 128, 64 tokens) measured about 27.1 to 24.1 us. This is an operation-level result, not a whole-model speedup. |
+| Vulkan blocked GDN | `GGML_VK_GDN_BLOCKED=1` | The same synthetic operation measured about 107.7 to 39.1 us. It remains opt-in and supports the scalar-gate form only. |
+| Vulkan q4_0 decode attention | `GGML_VK_FA_DEC=1` | A p512/tg128 check showed no speed difference from fallback and a short fixed-seed output mismatch. Keep disabled unless a workload-specific validation shows a benefit. |
+| SYCL quantized GQA tile | `GGML_SYCL_FA_QUANT_GQA_TILE=1` | No measurable B580 speedup; keep disabled. |
+| SYCL direct q4_0 cache decode | `GGML_SYCL_FA_Q4_DIRECT=1` | Experimental portable SYCL kernel adapted from Torchit. It is restricted to F32 queries/outputs, 256-wide heads, 6:1 GQA, 1–4 query tokens, q4_0 K/V, no sinks/ALiBi/softcap, and an optional F16 mask. A verbose OpenCL trace confirmed `Q4-DEC` dispatch on Bonsai; one fixed-seed 32-token output exactly matched the existing path. The runs were too short and variable to establish a speedup. |
+
+For long context, use q4_0 K/V caches and `GGML_SYCL_FA_ONEDNN_MAX_KV=98304` to cap the oneDNN attention route. With W8A8 off, a real 115,000-token prefill completed at 383.0 tokens/s. Another run prefilling 115,000 tokens and then measuring a further 512-token batch at that depth reached 205.2 tokens/s; 32 generated tokens with that context resident measured 3.54 tokens/s. These were single runs using `batch=1024`, `ubatch=512`, and q4_0 caches. The standard benchmark did not activate speculative MTP for the long-context decode measurement.
+
+The Torchit PTQ1 XMX path is now ported and opt-in. An isolated Level Zero 1.32.0 loader fixes the basic launch failure, and a separate PTQ1 device library avoids oneMKL's external-image import conflict. Native T2 measured 715.2 prompt and 32.9 decode tokens/s versus 568.2 and 8.0 with it disabled (pp512/tg128, three repetitions). See [the setup, correctness checks, and memory limits](bonsai-ptq1-level-zero.md). The earlier direct q4_0 attention path remains separately opt-in; these measurements do not establish its speedup.
+
 ## Router and WebUI
 
 Start the router with the models directory:

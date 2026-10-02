@@ -4,6 +4,7 @@
 #include "ggml.h"
 #include "gated_delta_net.hpp"
 #include <cmath>
+#include <cstdlib>
 
 
 template <int S_v, bool KDA, bool keep_rs_t>
@@ -162,6 +163,167 @@ void gated_delta_net_sycl(const float *     q,
     }
 }
 
+// Token-blocked variant for scalar-gate GDN with S_v=128. A work-group stages
+// several tokens of q/k/v/gate data, reducing the per-token global-memory stalls
+// in the sequential recurrence. Kept opt-in until representative model checks
+// establish both numerical parity and a performance win on this device.
+template <int NC, int NW, int T, bool keep_rs_t>
+static void gdn_blocked_sycl(const float * q, const float * k, const float * v, const float * g, const float * beta,
+                             const float * curr_state, float * dst, float * state, int64_t H, int64_t n_tokens,
+                             int64_t n_seqs, int64_t sq1, int64_t sq2, int64_t sq3, int64_t sv1, int64_t sv2,
+                             int64_t sv3, int64_t sb1, int64_t sb2, int64_t sb3, int64_t neqk1, int64_t rq3,
+                             float scale, int64_t state_slot_stride, int K, dpct::queue_ptr stream) {
+    constexpr int S = 128, L = 16, RPL = S / L;
+    constexpr int NCW = NC * NW, WGS = NW * L, ncb = S / NCW;
+    constexpr int PK = T * S / WGS, PV = T * NCW / WGS;
+    static_assert((T * S) % WGS == 0 && (T * NCW) % WGS == 0 && T <= WGS && S % NCW == 0,
+                  "gdn_blocked shape");
+    stream->submit([&](sycl::handler & cgh) {
+        sycl::local_accessor<float, 1> sk(sycl::range<1>(T * S), cgh);
+        sycl::local_accessor<float, 1> sq(sycl::range<1>(T * S), cgh);
+        sycl::local_accessor<float, 1> sv(sycl::range<1>(T * NCW), cgh);
+        sycl::local_accessor<float, 1> sgb(sycl::range<1>(2 * T), cgh);
+        cgh.parallel_for(sycl::nd_range<1>(sycl::range<1>((size_t) (n_seqs * H * ncb * WGS)), sycl::range<1>(WGS)),
+            [=](sycl::nd_item<1> it) [[sycl::reqd_sub_group_size(16)]] {
+                const int tid = it.get_local_id(0);
+                const int lane = tid % L;
+                const int w = tid / L;
+                const int64_t grp = it.get_group(0);
+                const int64_t seq = grp / (H * ncb);
+                const int64_t h = (grp / ncb) % H;
+                const int colb = (int) (grp % ncb) * NCW;
+                const int col0 = colb + w * NC;
+                const int64_t iq1 = h % neqk1;
+                const int64_t iq3 = seq / rq3;
+                const float * qb = q + iq3 * sq3 + iq1 * sq1;
+                const float * kb = k + iq3 * sq3 + iq1 * sq1;
+                const float * vb = v + seq * sv3 + h * sv1 + colb;
+                const float * gp = g + seq * sb3 + h * sb1;
+                const float * bp = beta + seq * sb3 + h * sb1;
+                float * attn = dst + (seq * n_tokens * H + h) * S;
+                float * st = state + (seq * H + h) * S * S;
+                const float * cs = curr_state + (seq * H + h) * S * S;
+                float s[NC][RPL];
+#pragma unroll
+                for (int c = 0; c < NC; ++c) {
+#pragma unroll
+                    for (int r = 0; r < RPL; ++r) {
+                        s[c][r] = cs[(col0 + c) * S + r * L + lane];
+                    }
+                }
+                float pk[PK], pq[PK], pv[PV], pg = 0.0f, pb = 0.0f;
+                auto fetch = [&](int64_t t0) {
+#pragma unroll
+                    for (int j = 0; j < PK; ++j) {
+                        const int e = tid + j * WGS, t = e / S, i = e % S;
+                        const bool ok = t0 + t < n_tokens;
+                        pk[j] = ok ? kb[(t0 + t) * sq2 + i] : 0.0f;
+                        pq[j] = ok ? qb[(t0 + t) * sq2 + i] : 0.0f;
+                    }
+#pragma unroll
+                    for (int j = 0; j < PV; ++j) {
+                        const int e = tid + j * WGS, t = e / NCW, c = e % NCW;
+                        pv[j] = t0 + t < n_tokens ? vb[(t0 + t) * sv2 + c] : 0.0f;
+                    }
+                    if (tid < T && t0 + tid < n_tokens) {
+                        pg = gp[(t0 + tid) * sb2];
+                        pb = bp[(t0 + tid) * sb2];
+                    }
+                };
+                fetch(0);
+                for (int64_t t0 = 0; t0 < n_tokens; t0 += T) {
+                    it.barrier(sycl::access::fence_space::local_space);
+#pragma unroll
+                    for (int j = 0; j < PK; ++j) {
+                        sk[tid + j * WGS] = pk[j];
+                        sq[tid + j * WGS] = pq[j];
+                    }
+#pragma unroll
+                    for (int j = 0; j < PV; ++j) sv[tid + j * WGS] = pv[j];
+                    if (tid < T) {
+                        sgb[tid] = sycl::native::exp(pg);
+                        sgb[T + tid] = pb;
+                    }
+                    it.barrier(sycl::access::fence_space::local_space);
+                    if (t0 + T < n_tokens) fetch(t0 + T);
+                    const int nt = (int) sycl::min((int64_t) T, n_tokens - t0);
+                    for (int t = 0; t < nt; ++t) {
+                        float kr[RPL], qr[RPL];
+#pragma unroll
+                        for (int r = 0; r < RPL; ++r) {
+                            kr[r] = sk[t * S + r * L + lane];
+                            qr[r] = sq[t * S + r * L + lane];
+                        }
+                        const float g_val = sgb[t], beta_val = sgb[T + t];
+                        float out = 0.0f;
+#pragma unroll
+                        for (int c = 0; c < NC; ++c) {
+                            float kv_shard = 0.0f;
+#pragma unroll
+                            for (int r = 0; r < RPL; ++r) kv_shard += s[c][r] * kr[r];
+                            const float kv_col = warp_reduce_sum<L>(kv_shard);
+                            const float delta_col = (sv[t * NCW + w * NC + c] - g_val * kv_col) * beta_val;
+                            float attn_partial = 0.0f;
+#pragma unroll
+                            for (int r = 0; r < RPL; ++r) {
+                                s[c][r] = g_val * s[c][r] + kr[r] * delta_col;
+                                attn_partial += s[c][r] * qr[r];
+                            }
+                            const float attn_col = warp_reduce_sum<L>(attn_partial);
+                            if (lane == c) out = attn_col;
+                        }
+                        if (lane < NC) attn[(t0 + t) * S * H + col0 + lane] = out * scale;
+                        if constexpr (keep_rs_t) {
+                            const int target_slot = (int) (n_tokens - 1 - (t0 + t));
+                            if (target_slot >= 0 && target_slot < K) {
+                                float * cst = st + target_slot * state_slot_stride;
+#pragma unroll
+                                for (int c = 0; c < NC; ++c) {
+#pragma unroll
+                                    for (int r = 0; r < RPL; ++r) cst[(col0 + c) * S + r * L + lane] = s[c][r];
+                                }
+                            }
+                        }
+                    }
+                }
+                if constexpr (!keep_rs_t) {
+#pragma unroll
+                    for (int c = 0; c < NC; ++c) {
+#pragma unroll
+                        for (int r = 0; r < RPL; ++r) st[(col0 + c) * S + r * L + lane] = s[c][r];
+                    }
+                }
+            });
+    });
+}
+
+template <bool keep_rs_t>
+static void launch_gdn_blocked(int variant, const float * q, const float * k, const float * v, const float * g,
+                               const float * beta, const float * s0, float * dst, float * state, int64_t H,
+                               int64_t n_tokens, int64_t n_seqs, int64_t sq1, int64_t sq2, int64_t sq3, int64_t sv1,
+                               int64_t sv2, int64_t sv3, int64_t sb1, int64_t sb2, int64_t sb3, int64_t neqk1,
+                               int64_t rq3, float scale, int64_t state_slot_stride, int K, dpct::queue_ptr stream) {
+#define GDN_BLK(NC, NW, T) gdn_blocked_sycl<NC, NW, T, keep_rs_t>(q, k, v, g, beta, s0, dst, state, H, n_tokens, n_seqs, sq1, sq2, sq3, sv1, sv2, sv3, sb1, sb2, sb3, neqk1, rq3, scale, state_slot_stride, K, stream)
+    if (variant < 0) {
+        const int64_t cols = H * n_seqs * 128;
+        variant = cols >= 768 * 8 ? 9 : cols >= 768 * 4 ? 3 : cols >= 768 * 2 ? 4 : 5;
+    }
+    switch (variant) {
+        case 1: GDN_BLK(8, 16, 16); break;
+        case 2: GDN_BLK(8, 8, 16); break;
+        case 3: GDN_BLK(4, 16, 16); break;
+        case 4: GDN_BLK(2, 16, 16); break;
+        case 5: GDN_BLK(1, 16, 16); break;
+        case 6: GDN_BLK(4, 32, 16); break;
+        case 7: GDN_BLK(4, 8, 32); break;
+        case 8: GDN_BLK(8, 8, 8); break;
+        case 9: GDN_BLK(8, 16, 8); break;
+        case 10: GDN_BLK(4, 16, 8); break;
+        default: GDN_BLK(4, 8, 16); break;
+    }
+#undef GDN_BLK
+}
+
 template <bool KDA, bool keep_rs_t>
 static void launch_gated_delta_net(const float *   q_d,
                                    const float *   k_d,
@@ -191,6 +353,16 @@ static void launch_gated_delta_net(const float *   q_d,
                                    int             K,
                                    dpct::queue_ptr stream) {
     //TODO: Add chunked kernel for even faster pre-fill
+    if constexpr (!KDA) {
+        static const bool blocked = getenv("GGML_SYCL_GDN_BLOCKED") != nullptr;
+        static const int variant = getenv("GGML_SYCL_GDN_BLK_VARIANT") ? atoi(getenv("GGML_SYCL_GDN_BLK_VARIANT")) : -1;
+        static const int min_tokens = getenv("GGML_SYCL_GDN_BLK_MIN") ? atoi(getenv("GGML_SYCL_GDN_BLK_MIN")) : 16;
+        if (blocked && S_v == 128 && n_tokens >= min_tokens) {
+            launch_gdn_blocked<keep_rs_t>(variant, q_d, k_d, v_d, g_d, b_d, s_d, dst_d, state_d, H, n_tokens,
+                n_seqs, sq1, sq2, sq3, sv1, sv2, sv3, sb1, sb2, sb3, neqk1, rq3, scale, state_slot_stride, K, stream);
+            return;
+        }
+    }
     const int warp_size = ggml_sycl_info().devices[ggml_sycl_get_device()].warp_size;
 
     const int num_warps = 4;

@@ -224,6 +224,8 @@ inline dpct::err0 ggml_sycl_set_device(const int device) try {
 //////////////////////
 struct optimize_feature {
     bool reorder=false;
+    bool t2 = false;
+
 };
 
 struct sycl_device_info {

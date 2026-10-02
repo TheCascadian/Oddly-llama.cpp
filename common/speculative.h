@@ -37,6 +37,10 @@ struct common_speculative_output_limits {
 common_speculative_output_limits common_speculative_get_output_limits(
         int32_t n_batch, int32_t n_parallel, int32_t n_draft);
 
+// True when deferred MTP catch-up rows and one first-draft anchor per active
+// sequence fit in a single decode batch.
+bool common_speculative_mtp_first_decode_fits(int32_t n_batch, int32_t catchup_rows, int32_t n_anchors);
+
 common_speculative * common_speculative_init(common_params_speculative & params, uint32_t n_seq);
 
 void common_speculative_free(common_speculative * spec);

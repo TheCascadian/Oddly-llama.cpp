@@ -1,0 +1,83 @@
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10746-6424c91b4
+model      : /mnt/Data/Projects/Models/Ternary-Bonsai/Ternary-Bonsai-2-27B-PTQ1_0-mtp.gguf
+ftype      : PTQ1_0 - 1.75 bpw ternary (group 128)
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> Write a Python function that merges overlapping integer intervals. Include an example. Return only code.
+[New LWP 2833649]
+[New LWP 2833564]
+[New LWP 2833075]
+[New LWP 2833074]
+[New LWP 2833073]
+[New LWP 2833072]
+[New LWP 2833071]
+[New LWP 2833070]
+[New LWP 2833069]
+[New LWP 2833068]
+[New LWP 2833067]
+[New LWP 2833066]
+[New LWP 2833065]
+[New LWP 2833064]
+[New LWP 2833063]
+[New LWP 2833062]
+[New LWP 2833052]
+[New LWP 2833048]
+To enable execution of this file add
+	add-auto-load-safe-path /opt/intel/oneapi/compiler/2026.1/lib/libsycl.so.9.0.0-gdb.py
+line to your configuration file "/home/oddsoul/.config/gdb/gdbinit".
+To completely disable this security protection add
+	set auto-load safe-path /
+line to your configuration file "/home/oddsoul/.config/gdb/gdbinit".
+For more information about this security protection see the
+"Auto-loading safe path" section in the GDB manual.  E.g., run from the shell:
+	info "(gdb)Auto-loading safe path"
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x00007f045eaa672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#0  0x00007f045eaa672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007f045ea9b388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007f045ea9b3cd in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007f045eb0f746 in poll () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x00007f04606744f1 in httplib::detail::SocketStream::wait_readable() const () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#5  0x00007f0460674798 in httplib::detail::SocketStream::read(char*, unsigned long) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#6  0x00007f0460654f9c in httplib::detail::stream_line_reader::getline() () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#7  0x00007f0460672fe4 in httplib::detail::ChunkedDecoder::read_payload(char*, unsigned long, unsigned long&, unsigned long&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#8  0x00007f04606ce08f in httplib::detail::read_content<httplib::Response>(httplib::Stream&, httplib::Response&, unsigned long, int&, std::function<bool (unsigned long, unsigned long)>, std::function<bool (char const*, unsigned long, unsigned long, unsigned long)>, bool)::{lambda(std::function<bool (char const*, unsigned long, unsigned long, unsigned long)> const&)#1}::operator()(std::function<bool (char const*, unsigned long, unsigned long, unsigned long)> const&) const () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#9  0x00007f04606cdf2a in bool httplib::detail::prepare_content_receiver<httplib::Response, httplib::detail::read_content<httplib::Response>(httplib::Stream&, httplib::Response&, unsigned long, int&, std::function<bool (unsigned long, unsigned long)>, std::function<bool (char const*, unsigned long, unsigned long, unsigned long)>, bool)::{lambda(std::function<bool (char const*, unsigned long, unsigned long, unsigned long)> const&)#1}>(httplib::Response&, int&, std::function<bool (char const*, unsigned long, unsigned long, unsigned long)>, bool, unsigned long, bool&, httplib::detail::read_content<httplib::Response>(httplib::Stream&, httplib::Response&, unsigned long, int&, std::function<bool (unsigned long, unsigned long)>, std::function<bool (char const*, unsigned long, unsigned long, unsigned long)>, bool)::{lambda(std::function<bool (char const*, unsigned long, unsigned long, unsigned long)> const&)#1}) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#10 0x00007f04606c0747 in bool httplib::detail::read_content<httplib::Response>(httplib::Stream&, httplib::Response&, unsigned long, int&, std::function<bool (unsigned long, unsigned long)>, std::function<bool (char const*, unsigned long, unsigned long, unsigned long)>, bool) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#11 0x00007f046068bc9b in httplib::ClientImpl::process_request(httplib::Stream&, httplib::Request&, httplib::Response&, bool, httplib::Error&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#12 0x00007f046068a8da in httplib::ClientImpl::handle_request(httplib::Stream&, httplib::Request&, httplib::Response&, bool, httplib::Error&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#13 0x00007f046069060c in httplib::ClientImpl::process_socket(httplib::ClientImpl::Socket const&, std::chrono::time_point<std::chrono::_V2::steady_clock, std::chrono::duration<long, std::ratio<1l, 1000000000l> > >, std::function<bool (httplib::Stream&)>) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#14 0x00007f04606884a9 in httplib::ClientImpl::send_(httplib::Request&, httplib::Response&, httplib::Error&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#15 0x00007f046068896a in httplib::ClientImpl::send_(httplib::Request&&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#16 0x00007f046069529d in httplib::ClientImpl::Post(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, httplib::detail::insertion_ordered_multimap<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, httplib::detail::case_ignore::equal_to> const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<bool (char const*, unsigned long)>, std::function<bool (unsigned long, unsigned long)>) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#17 0x00007f04606a0056 in httplib::Client::Post(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, httplib::detail::insertion_ordered_multimap<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, httplib::detail::case_ignore::equal_to> const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<bool (char const*, unsigned long)>, std::function<bool (unsigned long, unsigned long)>) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-server-impl.so
+#18 0x00007f0460afccd3 in cli_client::post_sse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<bool ()> const&, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-cli-impl.so
+#19 0x00007f0460b05b7a in cli_context::generate_completion(cli_context::generated_content&, cli_timings&) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-cli-impl.so
+#20 0x00007f0460b074bb in cli_context::run() () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-cli-impl.so
+#21 0x00007f0460af618b in llama_cli(int, char**) () from /mnt/Data/Projects/PrismML-Arc/llama.cpp/build-intel-all/bin/libllama-cli-impl.so
+#22 0x00007f045ea35ca8 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#23 0x00007f045ea35d65 in __libc_start_main () from /lib/x86_64-linux-gnu/libc.so.6
+#24 0x0000000000406411 in _start ()
+[Inferior 1 (process 2832421) detached]

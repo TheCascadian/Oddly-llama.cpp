@@ -83,6 +83,30 @@ public:
         matmul_prim.execute(stream, matmul_args);
     }
 
+    // Int8 x int8 prompt GEMM used by the optional PTQ1_0/PQ2_0 W8A8 path.
+    static void gemm_s8(ggml_backend_sycl_context & ctx, int m, int n, int k, const int8_t * act,
+                        const int8_t * w, float * dst, const queue_ptr & q) {
+        auto stream = ctx.stream_dnnl(q);
+        auto eng = ctx.engine_dnnl(q);
+        const auto act_md = dnnl::memory::desc({n, k}, dt::s8, tag::ab);
+        const auto w_md = dnnl::memory::desc({k, m}, dt::s8, tag::ba);
+        const auto dst_md = dnnl::memory::desc({n, m}, dt::f32, tag::ab);
+        dnnl::primitive_attr attr;
+        attr.set_scratchpad_mode(dnnl::scratchpad_mode::user);
+        auto pd = dnnl::matmul::primitive_desc(eng, act_md, w_md, dst_md, attr);
+        auto prim = dnnl::matmul(pd);
+        ggml_sycl_pool_alloc<uint8_t> scratchpad(ctx.pool());
+        const auto scratchpad_md = pd.scratchpad_desc();
+        void * scratchpad_ptr = scratchpad_md.get_size() > 0 ? scratchpad.alloc(scratchpad_md.get_size()) : nullptr;
+        auto scratchpad_mem = dnnl::memory(scratchpad_md, eng, scratchpad_ptr);
+        std::unordered_map<int, dnnl::memory> args;
+        args.insert({DNNL_ARG_SRC, dnnl::memory(act_md, eng, const_cast<int8_t *>(act))});
+        args.insert({DNNL_ARG_WEIGHTS, dnnl::memory(w_md, eng, const_cast<int8_t *>(w))});
+        args.insert({DNNL_ARG_DST, dnnl::memory(pd.dst_desc(), eng, dst)});
+        args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
+        prim.execute(stream, args);
+    }
+
     static void row_gemm(ggml_backend_sycl_context & ctx, int m, int n, int k,
         const void * a, dt at, const void * b, dt bt, void * c, dt ct, const queue_ptr & q) {
 
