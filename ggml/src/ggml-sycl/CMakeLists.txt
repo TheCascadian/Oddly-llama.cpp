@@ -24,11 +24,13 @@ ggml_add_backend_library(ggml-sycl
                         )
 
 file(GLOB   GGML_HEADERS_SYCL "*.hpp")
-file(GLOB   GGML_SOURCES_SYCL "*.cpp")
+file(GLOB   GGML_SOURCES_SYCL CONFIGURE_DEPENDS "*.cpp")
 file(GLOB   SRCS "template-instances/fattn-tile*.cpp")
 list(APPEND GGML_SOURCES_SYCL ${SRCS})
 file(GLOB   SRCS "template-instances/fattn-vec*.cpp")
 list(APPEND GGML_SOURCES_SYCL ${SRCS})
+
+list(REMOVE_ITEM GGML_SOURCES_SYCL "${CMAKE_CURRENT_SOURCE_DIR}/ptq1-t2.cpp")
 
 target_sources(ggml-sycl PRIVATE ${GGML_HEADERS_SYCL} ${GGML_SOURCES_SYCL})
 
@@ -113,6 +115,7 @@ if (GGML_SYCL_SUPPORT_LEVEL_ZERO_API)
     find_path(LEVEL_ZERO_INCLUDE_DIR level_zero/ze_api.h HINTS ${ONEAPI_ROOT}/include ${LEVEL_ZERO_V1_SDK_PATH}/include)
     find_library(ZE_LOADER_LIB ze_loader HINTS ${ONEAPI_ROOT}/lib ${LEVEL_ZERO_V1_SDK_LIB_PATH} ENV LD_LIBRARY_PATH)
     if(ZE_LOADER_LIB AND LEVEL_ZERO_INCLUDE_DIR)
+        target_include_directories(ggml-sycl PRIVATE ${LEVEL_ZERO_INCLUDE_DIR})
         target_link_libraries(ggml-sycl PRIVATE ${ZE_LOADER_LIB})
         target_compile_definitions(ggml-sycl PRIVATE GGML_SYCL_SUPPORT_LEVEL_ZERO_API)
         message(STATUS "Level Zero loader found: ${ZE_LOADER_LIB}")
@@ -175,6 +178,29 @@ if (GGML_SYCL_TARGET STREQUAL "INTEL")
         set(SYCL_COMPILER ON)
     endif()
     find_package(MKL REQUIRED)
+
+    # Intel's oneAPI compiler and oneMKL ship as versioned components. Mixing
+    # releases can produce a successful SYCL compile followed by an unresolved
+    # SYCL runtime symbol at link time. CMake caches these package paths, so
+    # fail early with an actionable message instead of leaving the user with a
+    # confusing linker error.
+    set(_ggml_sycl_compiler_release "")
+    set(_ggml_sycl_mkl_release "")
+    if (CMAKE_CXX_COMPILER MATCHES "/compiler/([0-9]+\\.[0-9]+)/")
+        set(_ggml_sycl_compiler_release "${CMAKE_MATCH_1}")
+    elseif (CMAKE_CXX_COMPILER_VERSION MATCHES "^([0-9]+\\.[0-9]+)")
+        set(_ggml_sycl_compiler_release "${CMAKE_MATCH_1}")
+    endif()
+    if (MKL_DIR MATCHES "/mkl/([0-9]+\\.[0-9]+)/")
+        set(_ggml_sycl_mkl_release "${CMAKE_MATCH_1}")
+    endif()
+    if (_ggml_sycl_compiler_release AND _ggml_sycl_mkl_release AND
+        NOT _ggml_sycl_compiler_release STREQUAL _ggml_sycl_mkl_release)
+        message(FATAL_ERROR
+            "Intel SYCL toolchain mismatch: DPC++ ${_ggml_sycl_compiler_release} "
+            "is paired with oneMKL ${_ggml_sycl_mkl_release} (from ${MKL_DIR}). "
+            "Use matching oneAPI compiler and oneMKL releases, then configure a fresh build directory.")
+    endif()
     target_link_libraries(ggml-sycl PRIVATE MKL::MKL_SYCL::BLAS)
 else()
     # default for other target
@@ -216,3 +242,32 @@ if (GGML_SYCL_DEVICE_ARCH)
         -fsycl-max-parallel-link-jobs=${GGML_SYCL_MAX_PARALLEL_LINK_JOBS}
     )
 endif()
+
+# oneMKL enables external device-image imports. IGC builtins must be linked separately.
+option(GGML_SYCL_T2_PORTABLE_LOADS "Use standard SYCL loads in the PTQ1 T2 kernels" OFF)
+add_library(prism-sycl-t2 SHARED ptq1-t2.cpp)
+if (GGML_SYCL_T2_PORTABLE_LOADS)
+    target_compile_definitions(prism-sycl-t2 PRIVATE GGML_SYCL_T2_PORTABLE_LOADS)
+endif()
+target_compile_features(prism-sycl-t2 PRIVATE cxx_std_17)
+target_compile_options(prism-sycl-t2 PRIVATE -fsycl)
+target_link_options(prism-sycl-t2 PRIVATE -fsycl -fno-sycl-allow-device-image-dependencies)
+set_target_properties(prism-sycl-t2 PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+target_link_libraries(ggml-sycl PRIVATE prism-sycl-t2)
+if (GGML_SYCL_DEVICE_ARCH)
+    target_compile_options(prism-sycl-t2 PRIVATE -fsycl-targets=spir64_gen)
+    target_link_options(prism-sycl-t2 PRIVATE -fsycl-targets=spir64_gen
+        -Xsycl-target-backend=spir64_gen "-device ${GGML_SYCL_DEVICE_ARCH}")
+endif()
+if (GGML_BACKEND_DL)
+    if (GGML_BACKEND_DIR)
+        set(_t2_install_dir ${GGML_BACKEND_DIR})
+    else()
+        set(_t2_install_dir ${CMAKE_INSTALL_BINDIR})
+    endif()
+else()
+    set(_t2_install_dir ${CMAKE_INSTALL_LIBDIR})
+endif()
+set_property(TARGET ggml-sycl APPEND PROPERTY INSTALL_RPATH "$ORIGIN")
+install(TARGETS prism-sycl-t2 LIBRARY DESTINATION ${_t2_install_dir}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

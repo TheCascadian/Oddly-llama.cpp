@@ -60,9 +60,7 @@ OutputVector translate_pad(const NodeContext & context) {
 
     auto input = process_view_input_new(context, 0);
     if (context.get_input_shape(0) == context.get_output_shape()) {
-        auto input_shape = std::make_shared<ov::op::v3::ShapeOf>(input);
-        auto res = std::make_shared<ov::op::v1::Reshape>(input, input_shape, false);
-        return rename_outputs_with_suffix({res}, context.get_name());
+        return rename_outputs_with_suffix({input}, context.get_name());
     }
 
     const int32_t * op_params = context.get_output_op_params();
@@ -77,8 +75,19 @@ OutputVector translate_pad(const NodeContext & context) {
         return rename_outputs_with_suffix({res}, context.get_name());
     }
 
-    const std::vector<int64_t> pads_begin = {pads[6], pads[4], pads[2], pads[0]};
-    const std::vector<int64_t> pads_end = {pads[7], pads[5], pads[3], pads[1]};
+    const std::array<int64_t, 4> pads_begin_4d = {pads[6], pads[4], pads[2], pads[0]};
+    const std::array<int64_t, 4> pads_end_4d   = {pads[7], pads[5], pads[3], pads[1]};
+    const auto input_rank = input.get_partial_shape().rank();
+    FRONT_END_CHECK_IMPLEMENTED(input_rank.is_static(), "PAD requires a static input rank");
+    const size_t rank = static_cast<size_t>(input_rank.get_length());
+    FRONT_END_CHECK_IMPLEMENTED(rank > 0 && rank <= pads_begin_4d.size(), "PAD input rank must be between 1 and 4");
+    const size_t omitted = pads_begin_4d.size() - rank;
+    for (size_t i = 0; i < omitted; ++i) {
+        FRONT_END_CHECK_IMPLEMENTED(pads_begin_4d[i] == 0 && pads_end_4d[i] == 0,
+                                   "PAD cannot omit a leading dimension with non-zero padding");
+    }
+    const std::vector<int64_t> pads_begin(pads_begin_4d.begin() + omitted, pads_begin_4d.end());
+    const std::vector<int64_t> pads_end(pads_end_4d.begin() + omitted, pads_end_4d.end());
 
     auto pads_begin_node = ov::op::v0::Constant::create(ov::element::i64, {pads_begin.size()}, pads_begin);
     auto pads_end_node = ov::op::v0::Constant::create(ov::element::i64, {pads_end.size()}, pads_end);

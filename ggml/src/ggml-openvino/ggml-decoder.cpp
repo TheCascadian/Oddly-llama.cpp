@@ -198,8 +198,14 @@ static std::string get_tensor_graph_input_ov_name(const GgmlOvDecoder * decoder,
     if (GgmlOvDecoder::is_inp_emb(tensor, op)) {
         return "embd";
     }
-    if (decoder->is_stateful() && GgmlOvDecoder::is_inp_mask(tensor, op)) {
-        return std::string(tensor->name).find("swa") == std::string::npos ? "self_kq_mask" : "self_kq_mask_swa";
+    if (GgmlOvDecoder::is_inp_mask(tensor, op)) {
+        const bool is_swa = decoder->is_swa_mask(tensor);
+        if (decoder->is_stateful()) {
+            return is_swa ? "self_kq_mask_swa" : "self_kq_mask";
+        }
+        if (is_swa) {
+            return get_tensor_ov_name(cgraph, tensor) + "_swa";
+        }
     }
     return get_tensor_ov_name(cgraph, tensor);
 }
@@ -339,6 +345,15 @@ int GgmlOvDecoder::compute_op_case(const ggml_tensor * node) const {
         }
         break;
     }
+    case GGML_OP_POOL_2D: {
+        const ggml_op_pool pool_mode = static_cast<ggml_op_pool>(node->op_params[0]);
+        if (pool_mode == GGML_OP_POOL_MAX) {
+            op_case = 1;
+        } else if (pool_mode == GGML_OP_POOL_AVG) {
+            op_case = 2;
+        }
+        break;
+    }
     case GGML_OP_ROPE: {
         const int mode = node->op_params[2];
         switch (mode) {
@@ -469,6 +484,28 @@ std::optional<int> extract_layer_from_name(const std::string & name) {
     return layer;
 }
 
+int GgmlOvDecoder::get_n_heads_kv_for_layer(int layer) const {
+    auto it = m_model_params.n_heads_kv_per_layer.find(layer);
+    return it != m_model_params.n_heads_kv_per_layer.end() ? it->second : m_model_params.n_heads_kv;
+}
+
+int GgmlOvDecoder::get_n_heads_kv_for_tensor(const ggml_tensor * kv_tensor) const {
+    if (auto layer = extract_layer_from_name(std::string(kv_tensor->name)); layer.has_value()) {
+        return get_n_heads_kv_for_layer(layer.value());
+    }
+    return m_model_params.n_heads_kv;
+}
+
+int GgmlOvDecoder::get_head_size_for_tensor(const ggml_tensor * kv_tensor) const {
+    if (auto layer = extract_layer_from_name(std::string(kv_tensor->name)); layer.has_value()) {
+        auto it = m_model_params.head_size_per_layer.find(layer.value());
+        if (it != m_model_params.head_size_per_layer.end()) {
+            return it->second;
+        }
+    }
+    return m_model_params.head_size;
+}
+
 std::pair<ModelParams, ComputeParams> GgmlOvDecoder::compute_llm_params(ggml_cgraph * cgraph, bool is_static) {
     ModelParams model_params;
     ComputeParams compute_params;
@@ -522,6 +559,63 @@ std::pair<ModelParams, ComputeParams> GgmlOvDecoder::compute_llm_params(ggml_cgr
         return -1;
     };
 
+    auto get_attention_op_mask = [&get_attention_pattern_case](const ggml_tensor * node) -> const ggml_tensor * {
+        switch (get_attention_pattern_case(node)) {
+        case 0:
+        case 1:
+            return node->src[3];
+        case 2:
+        case 3:
+            return node->src[1];
+        default:
+            return nullptr;
+        }
+    };
+
+    // The full-attention and SWA masks may have the same tensor name. Classify layers from
+    // their KV-cache leaf extents, then use mask identity to keep their OpenVINO inputs distinct.
+    {
+        std::map<int, int64_t> layer_extent;
+        std::map<int, const ggml_tensor *> layer_mask;
+        int64_t max_extent = 0;
+
+        for (int i = 0; i < cgraph->n_nodes; i++) {
+            const ggml_tensor * mask = get_attention_op_mask(cgraph->nodes[i]);
+            if (mask == nullptr) {
+                continue;
+            }
+            const ggml_tensor * cache_k_permute = nullptr;
+            switch (get_attention_pattern_case(cgraph->nodes[i])) {
+            case 0: cache_k_permute = cgraph->nodes[i]->src[1]; break;
+            case 1: cache_k_permute = cgraph->nodes[i]->src[1]->src[0]; break;
+            case 2: cache_k_permute = cgraph->nodes[i]->src[0]->src[0]; break;
+            default: cache_k_permute = cgraph->nodes[i]->src[0]->src[0]->src[0]; break;
+            }
+            const ggml_tensor * cache_k_view = cache_k_permute->src[0];
+            if (cache_k_view->op != GGML_OP_VIEW) {
+                continue;
+            }
+            const ggml_tensor * leaf = cache_k_view->src[0];
+            auto layer = extract_layer_from_name(leaf->name);
+            if (!layer.has_value()) {
+                continue;
+            }
+            layer_extent[layer.value()] = leaf->ne[1];
+            layer_mask[layer.value()] = mask;
+            max_extent = std::max(max_extent, leaf->ne[1]);
+        }
+
+        for (const auto & [layer, extent] : layer_extent) {
+            if (extent < max_extent) {
+                model_params.swa_layers.push_back(layer);
+                if (model_params.swa_mask == nullptr) {
+                    model_params.swa_mask = layer_mask[layer];
+                }
+            }
+        }
+        std::sort(model_params.swa_layers.begin(), model_params.swa_layers.end());
+    }
+
     bool rope_seen = false;
     for (int i = 0; i < cgraph->n_nodes; i++) {
         auto * node = cgraph->nodes[i];
@@ -567,11 +661,13 @@ std::pair<ModelParams, ComputeParams> GgmlOvDecoder::compute_llm_params(ggml_cgr
             ggml_tensor * cache_k = cache_k_view->src[0];
             int layer = extract_layer_from_name(cache_k->name).value();
 
-            std::string mask_name(mask->name);
+            const bool layer_is_swa = std::find(model_params.swa_layers.begin(), model_params.swa_layers.end(),
+                                                layer) != model_params.swa_layers.end();
 
             model_params.kv_buffer_ctx_id = ggml_backend_openvino_buffer_get_ctx_id(cache_k->buffer);
-            if (mask_name.find("swa") != std::string::npos) {
-                model_params.swa_layers.push_back(layer);
+            model_params.n_heads_kv_per_layer[layer] = cache_k_permute->ne[2];
+            model_params.head_size_per_layer[layer] = cache_k_permute->ne[0];
+            if (layer_is_swa) {
                 model_params.ctx_per_seq_swa = cache_k->ne[1];
             } else {
                 model_params.ctx_per_seq = cache_k->ne[1];
@@ -584,7 +680,7 @@ std::pair<ModelParams, ComputeParams> GgmlOvDecoder::compute_llm_params(ggml_cgr
             memcpy(&offset, cache_k_view->op_params, sizeof(size_t));
             compute_params.seq_active_start = offset / seq_size;
 
-            if (mask_name.find("swa") != std::string::npos) {
+            if (layer_is_swa) {
                 compute_params.attention_size_swa = mask->ne[0];
             } else {
                 compute_params.attention_size = mask->ne[0];
@@ -726,10 +822,11 @@ ov::PartialShape GgmlOvDecoder::get_graph_input_shape(const ggml_tensor * op,
             // Convert stateless KV cache layout [1, 1, seq, n_heads_kv * head_size]
             // to stateful layout [1, seq, n_heads_kv, head_size].
             assert(input_shape.size() == 4 && input_shape[0] == 1 && input_shape[1] == 1 &&
-                   input_shape[2].is_dynamic() &&
-                   input_shape[3] == (m_model_params.n_heads_kv * m_model_params.head_size));
-            input_shape = {input_shape[0], ov::Dimension::dynamic(), m_model_params.n_heads_kv,
-                           m_model_params.head_size};
+                   input_shape[2].is_dynamic() && input_shape[3].is_static());
+            const int n_heads_kv = get_n_heads_kv_for_tensor(input);
+            const int head_size = get_head_size_for_tensor(input);
+            assert(n_heads_kv > 0 && head_size > 0);
+            input_shape = {input_shape[0], ov::Dimension::dynamic(), n_heads_kv, head_size};
         }
 
     } else if (is_kv_idx(input, op)) {
@@ -1814,6 +1911,8 @@ void GgmlOvDecoder::compute_node_dynamic_dims() {
         case GGML_OP_RMS_NORM:
         case GGML_OP_L2_NORM:
         case GGML_OP_NORM:
+        case GGML_OP_POOL_2D:
+        case GGML_OP_ROLL:
         case GGML_OP_ADD:
         case GGML_OP_SUB:
         case GGML_OP_GLU:

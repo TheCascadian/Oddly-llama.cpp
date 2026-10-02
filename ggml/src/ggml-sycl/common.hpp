@@ -224,6 +224,8 @@ inline dpct::err0 ggml_sycl_set_device(const int device) try {
 //////////////////////
 struct optimize_feature {
     bool reorder=false;
+    bool t2 = false;
+
 };
 
 struct sycl_device_info {
@@ -410,29 +412,10 @@ struct ggml_backend_sycl_context {
     dnnl::stream stream_dnnl() {
         return stream_dnnl(device, 0);
     }
-    dnnl::memory get_scratchpad_mem(const dnnl::memory::desc & scratchpad_md,
-                                    const dnnl::engine & eng, const queue_ptr q) {
-        ggml_sycl_pool_alloc<uint8_t> * pool;
-        auto it = scratchpad_map.find(q);
-        if (it == scratchpad_map.end()) {
-            scratchpad_map[q] = std::make_unique<ggml_sycl_pool_alloc<uint8_t>>(this->pool());
-            pool = scratchpad_map[q].get();
-        } else {
-            pool = it->second.get();
-        }
-
-        size_t scratchpad_size = scratchpad_md.get_size();
-        if (scratchpad_size > pool->actual_size) {
-            pool->realloc(scratchpad_size);
-        }
-        void * mem_ptr = pool->get();
-        return dnnl::memory(scratchpad_md, eng, mem_ptr);
-    }
 #endif
 
     // pool
     std::unique_ptr<ggml_sycl_pool> pools[GGML_SYCL_MAX_DEVICES];
-    std::unordered_map<sycl::queue *, std::unique_ptr<ggml_sycl_pool_alloc<uint8_t>>> scratchpad_map;
 
     std::unique_ptr<ggml_sycl_fattn_kv_buffers> fattn_bufs[GGML_SYCL_MAX_DEVICES];
 

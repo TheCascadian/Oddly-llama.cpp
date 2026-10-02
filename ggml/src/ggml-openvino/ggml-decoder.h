@@ -21,11 +21,14 @@ struct ModelParams {
     int ctx_per_seq_swa = -1;
     int n_seq = 1;
     int n_heads_kv = -1;
+    std::map<int, int> n_heads_kv_per_layer;
+    std::map<int, int> head_size_per_layer;
     int head_size = -1;
     int state_size = -1;  // for SSM molels, eg qwen35
     int32_t rope_params[15];
     bool mixed_rope_params = false;
     std::vector<int> swa_layers;
+    const ggml_tensor * swa_mask = nullptr;
 
     std::vector<std::string> kv_names;
     size_t kv_buffer_ctx_id = 0;
@@ -247,6 +250,14 @@ public:
         return std::find(m_model_params.swa_layers.begin(), m_model_params.swa_layers.end(), layer) !=
                m_model_params.swa_layers.end();
     }
+
+    bool is_swa_mask(const ggml_tensor * mask) const { return m_model_params.swa_mask == mask; }
+
+    int get_n_heads_kv_for_layer(int layer) const;
+
+    int get_n_heads_kv_for_tensor(const ggml_tensor * kv_tensor) const;
+
+    int get_head_size_for_tensor(const ggml_tensor * kv_tensor) const;
 
     int get_past_kv_len() const { return m_compute_params.past_kv_len; }
 

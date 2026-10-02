@@ -1,6 +1,7 @@
 #include "fusion.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 
 // mul_mat(gate) + mul_mat(up) + GLU: graph shape and tensor properties only. Backend state
 // (weight layout, split buffers, DMMV) is checked by ggml_sycl_mul_mat_glu_mmvq_fused().
@@ -21,20 +22,26 @@ static bool ggml_sycl_should_fuse_mul_mat_glu(const ggml_tensor * gate, const gg
     const ggml_tensor * wg  = gate->src[0];
     const ggml_tensor * act = up->src[1];
 
-    // one set of block offsets and one quantized activation must serve both weights
-    if (wu->type != wg->type || !ggml_are_same_shape(wu, wg) || !ggml_are_same_stride(wu, wg)) {
+    const bool reorder_pair = (wu->type == GGML_TYPE_Q4_K && wg->type == GGML_TYPE_Q4_K) ||
+                              (wu->type == GGML_TYPE_Q5_K && wg->type == GGML_TYPE_Q5_K);
+    if (!reorder_pair || !ggml_are_same_shape(wu, wg) || !ggml_are_same_stride(wu, wg)) {
+        return false;
+    }
+    // Keep Q5_K fusion opt-in until it beats the fork's optimized MMVQ path on
+    // representative B580 workloads.
+    if (wu->type == GGML_TYPE_Q5_K && std::getenv("GGML_SYCL_ENABLE_Q5K_GLU_FUSION") == nullptr) {
         return false;
     }
     if (act != gate->src[1]) {
         return false;
     }
 
-    // only q4_K has a fused reorder GEMV so far, and it walks whole super-blocks
-    if (wu->type != GGML_TYPE_Q4_K || wu->ne[0] % QK_K != 0) {
+    // Both fused variants operate on whole QK_K super-blocks.
+    if (wu->ne[0] % QK_K != 0) {
         return false;
     }
 
-    // one 2D reorder-layout matrix in, a plain column stride out: no broadcast or padding
+    // One contiguous 2D matrix per weight, one contiguous activation and output.
     if (!ggml_is_contiguous(wu) || !ggml_is_contiguous(wg) || !ggml_is_contiguous(act) ||
         !ggml_is_contiguous(glu)) {
         return false;
@@ -159,6 +166,54 @@ bool ggml_sycl_can_fuse(const ggml_cgraph * cgraph, int node_idx, std::initializ
 
         // the 32-bit fastdiv is inexact past 2^31; decline, the unfused path handles it
         if (ggml_nelements(mul) >= ((int64_t) 1 << 31)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if (ops.size() == 2 && ops.begin()[0] == GGML_OP_SSM_CONV && ops.begin()[1] == GGML_OP_UNARY &&
+        unary_ops.size() == 1 && unary_ops.begin()[0] == GGML_UNARY_OP_SILU) {
+        const ggml_tensor * ssm_conv = cgraph->nodes[node_idx];
+        const ggml_tensor * silu     = cgraph->nodes[node_idx + 1];
+
+        if (ggml_get_unary_op(silu) != unary_ops.begin()[0]) {
+            return false;
+        }
+        if (ssm_conv->type != GGML_TYPE_F32 || silu->type != GGML_TYPE_F32) {
+            return false;
+        }
+        // the fused kernel writes the SiLU output with dense strides, so it must be contiguous
+        if (!ggml_is_contiguous(silu)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if (ops.size() == 3 && ops.begin()[0] == GGML_OP_SSM_CONV && ops.begin()[1] == GGML_OP_ADD &&
+        ops.begin()[2] == GGML_OP_UNARY && unary_ops.size() == 1 && unary_ops.begin()[0] == GGML_UNARY_OP_SILU) {
+        const ggml_tensor * ssm_conv = cgraph->nodes[node_idx];
+        const ggml_tensor * add      = cgraph->nodes[node_idx + 1];
+        const ggml_tensor * silu     = cgraph->nodes[node_idx + 2];
+
+        if (ggml_get_unary_op(silu) != unary_ops.begin()[0]) {
+            return false;
+        }
+        if (ssm_conv->type != GGML_TYPE_F32 || add->type != GGML_TYPE_F32 || silu->type != GGML_TYPE_F32) {
+            return false;
+        }
+        // the fused kernel writes the SiLU output with dense strides, so it must be contiguous
+        if (!ggml_is_contiguous(silu)) {
+            return false;
+        }
+
+        // ADD must consume ssm_conv's output and broadcast a 1-D channel-wise bias
+        const ggml_tensor * bias = (add->src[0] == ssm_conv) ? add->src[1] : add->src[0];
+        if (bias->type != GGML_TYPE_F32 || !ggml_is_contiguous(bias)) {
+            return false;
+        }
+        if (ggml_nelements(bias) != ssm_conv->ne[0] || bias->ne[0] != ssm_conv->ne[0]) {
             return false;
         }
 

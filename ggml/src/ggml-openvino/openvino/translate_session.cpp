@@ -5,6 +5,8 @@
 #include "ggml-openvino/openvino/node_context.h"
 #include "ggml-openvino/openvino/utils.h"
 #include "input_model.h"
+#include "pass/fuse_to_conv.h"
+#include "pass/kv_state_seq_axis.h"
 #include "pass/mark_decompression_convert_constant_folding.h"
 #include "pass/mark_dequantization_subgraph.h"
 #include "pass/squeeze_matmul.h"
@@ -395,11 +397,23 @@ std::shared_ptr<Model> TranslateSession::apply_transformations(std::shared_ptr<M
         // is_decompression_multiply() recognizes GatherMatmul as a valid consumer.
         manager.register_pass<ov::pass::MarkDequantization>(
             std::vector<ov::element::Type>{ov::element::u8, ov::element::i8, ov::element::u4, ov::element::i4});
+        // Keep a runtime switch so the image encoder can be compared against its
+        // unfused IM2COL + MatMul graph on target devices.
+        if (!ggml_openvino_getenv_int("GGML_OPENVINO_DISABLE_FUSE_TO_CONV")) {
+            manager.register_pass<pass::FuseToConv>();
+        }
 
         if (ggml_model_decoder->is_stateful()) {
             const auto kv_param_res_names = ggml_model_decoder->get_kv_param_res_names();
             const auto kv_param_res_pairs = get_kv_param_res_pairs(model, kv_param_res_names);
             manager.register_pass<ov::pass::MakeStateful>(kv_param_res_pairs);
+            // The sequence-axis layout targets GPU-plugin in-place KV appends. Keep the
+            // existing CPU layout, where the matching A/B run showed no reliable gain.
+            // MakeStateful creates the ReadValue/Assign pairs this pass rewrites.
+            if (ggml_openvino_get_device_name() == "GPU" &&
+                !ggml_openvino_getenv_int("GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT")) {
+                manager.register_pass<pass::KVStateSeqAxis>();
+            }
         }
 
         if (ggml_model_decoder->is_static()) {

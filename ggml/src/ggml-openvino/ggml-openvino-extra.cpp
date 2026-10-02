@@ -34,6 +34,7 @@ void ggml_openvino_device_config::init() {
         // String values (use ggml_openvino_getenv_str)
         "GGML_OPENVINO_DEVICE",
         "GGML_OPENVINO_CACHE_DIR",
+        "GGML_OPENVINO_SPILL_DIR",
         "GGML_OPENVINO_DEBUG_NODE",
         // Integer values (use ggml_openvino_getenv_int)
         "GGML_OPENVINO_PREFILL_CHUNK_SIZE",
@@ -50,9 +51,11 @@ void ggml_openvino_device_config::init() {
         "GGML_OPENVINO_DISABLE_KV_SLICE",
         "GGML_OPENVINO_ENABLE_FALLBACK",
         "GGML_OPENVINO_MANUAL_GQA_ATTN",
+        "GGML_OPENVINO_REQUANT_KQUANT",
         "GGML_OPENVINO_MEMORY_OPTIMIZE",
         "GGML_OPENVINO_RELEASE_WEIGHTS",
         "GGML_OPENVINO_REDUCE_COMPILE_MEM",
+        "GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT",
         "GGML_OPENVINO_ENABLE_LARGE_ALLOCATIONS",
         "GGML_OPENVINO_COMPILED_MODEL_CACHE_DIR",
     };
@@ -275,9 +278,14 @@ std::optional<ExtraQuantType> ggml_openvino_get_requant_type(const ggml_tensor *
     if (ggml_openvino_is_npu()) {
         return ExtraQuantType::Q4_0_128;
     }
+    const char * requant_kquant = ggml_openvino_getenv_str("GGML_OPENVINO_REQUANT_KQUANT");
+    const bool q4_sym128 = requant_kquant != nullptr && strcmp(requant_kquant, "q4_sym128") == 0;
     switch (tensor->type) {
     case GGML_TYPE_Q6_K:
     case GGML_TYPE_Q5_K:
+        if (q4_sym128) {
+            return ExtraQuantType::Q4_0_128;
+        }
         return ExtraQuantType::Q8_0_C;
     default:
         return std::nullopt;

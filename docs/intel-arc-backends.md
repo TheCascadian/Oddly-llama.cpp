@@ -31,6 +31,87 @@ selector is supplied. This is the stable path for the Arc B580 with the
 oneDNN-backed kernels. Set `ONEAPI_DEVICE_SELECTOR` explicitly when testing a
 different SYCL runtime path.
 
+## Level Zero API support
+
+`GGML_SYCL_SUPPORT_LEVEL_ZERO_API` defaults to `ON`. The SYCL target enables it
+when CMake finds both `level_zero/ze_api.h` and the Level Zero loader. CMake
+reports the resolved header and loader paths; the discovered header directory
+is added to the target include path. To select the Level Zero SYCL runtime for
+a test, set `ONEAPI_DEVICE_SELECTOR=level_zero:gpu` after sourcing oneAPI.
+
+The B580 is discovered by `sycl-ls` as `[level_zero:gpu:0]`. The Level Zero
+enabled fork builds and passes focused Q4_K SYCL backend operation tests on
+that device. A Qwen3.5-9B Q4_K_M end-to-end benchmark currently fails during
+`MUL_MAT` with `could not create a memory object`; use the default OpenCL path
+for full model runs until that runtime issue is resolved.
+
+The SYCL backend has an experimental fused Q5_K gate-up GLU path alongside the
+fork's existing reordered Q4_K row-pair path. Enable Q5_K fusion with
+`GGML_SYCL_ENABLE_Q5K_GLU_FUSION=1`. On the available Qwen3.5 Q5_K model, B580
+OpenCL `llama-bench` at p128/n64/r5 measured 52.67±0.09 decode tokens/s with
+fusion off and 52.16±0.12 with it on; prompt processing was effectively
+unchanged (1017.1±2.4 vs 1018.3±4.1 tokens/s). It remains opt-in because decode
+was about 1% slower. A fixed-seed 24-token generation matched with fusion on
+and off. The newer mixed Q5_K/IQ4_XS plain-layout path is not included because
+the current model inventory has no matching model for model-level validation.
+
+The SYCL Flash Attention tile fallback now has an 8:1 GQA dispatch for 512-wide
+attention, matching Gemma 4 E2B global attention. This is used when the oneDNN
+Flash Attention route is disabled or unavailable (`GGML_SYCL_FA_ONEDNN=0`). On
+the B580, the isolated long-context operation (8 query heads, 1 KV head, width
+512, KV length 49,152) measured 563.35 us/run with the new dispatch versus
+1249.49 us/run with the prior dispatch. The short KV=512 operation was within
+noise (42.22 vs 42.59 us/run). With oneDNN disabled, Q4 model decode measured
+86.04 vs 80.81 tokens/s while Q8 measured 57.93 vs 60.96 tokens/s, so the
+full-model result is mixed and does not show a consistent speedup. Both local
+Gemma 4 E2B Q4 and Q8 GGUFs load in `llama-bench`, but CLI generation remains
+unverified. Earlier apparent CLI smoke success masked the process status behind
+`tail`; explicit forced-tile runs segfaulted for both models on both the new
+and old dispatch, and an explicitly selected Q4 SYCL run produced unbounded
+blank output and was stopped. The matching `llama-bench` A/B runs completed. The
+49,152-token backend correctness fixture exceeds the existing 5e-4 tolerance
+on both the old and new dispatch (errors 0.001095 and 0.001089 respectively);
+the long case remains a performance fixture only, with the passing KV=512 case
+covering correctness.
+
+SYCL oneDNN GEMM scratchpads now use scoped pool allocations rather than a
+persistent per-queue allocation, avoiding the pool free-order hazard addressed
+upstream. On the B580, the f16-by-f16 `MUL_MAT` focused cases passed 32/32. The
+full SYCL `MUL_MAT` sweep passed 1,105/1,105 after standard `TQ1_0` and
+`TQ2_0` were marked unsupported so they are skipped safely. Prism's distinct
+`PTQ1_0` and `PQ2_0` paths remain supported; both passed in that sweep.
+The `SET_ROWS` type allowlist now mirrors its implemented dispatch cases; its
+full SYCL sweep passed 515/515, with unsupported standard ternary rows skipped
+instead of reaching an abort.
+
+SYCL FWHT uses a wide work-group kernel for Hadamard widths 1024, 2048, 4096,
+and 8192. `GGML_SYCL_DISABLE_FWHT_WIDE=1` disables these kernels for comparison.
+The B580 OpenCL PTQ1_0 Bonsai 2 27B benchmark at p128/n64/r3 measured
+215.93±0.85 prompt and 7.163±0.008 decode tokens/s with the wide kernels
+disabled, versus 234.18±0.56 prompt and 7.304±0.011 decode tokens/s with them
+enabled. This is about 8.4% faster prompt processing and 2.0% faster decode in
+that run. Fixed-seed CLI output matched with the kernels enabled and disabled,
+and the SYCL `MUL_MAT_HADAMARD` backend tests passed 27/27, including the
+supported wide widths.
+
+## Bonsai and long-context paths
+
+These paths were measured on the B580 with `Ternary-Bonsai-2-27B-PTQ1_0-mtp.gguf`.
+
+| Path | Enable flag | Result and status |
+| --- | --- | --- |
+| SYCL W8A8 prompt matmul | `GGML_SYCL_QUANT_W8A8=1` | Earlier p512 A/B measured 389.7 vs 232.0 tokens/s over two repetitions. A fixed-seed 128-token CLI generation matched exactly on and off. At 115K, W8A8 prefill failed with OpenCL `OUT_OF_RESOURCES` at both `ubatch=512` and `ubatch=256`; keep it off for the 115K configuration. |
+| MTP deferred catch-up | `LLAMA_MTP_DEFERRED_CATCHUP=1` | Eager and deferred runs produced identical text for 64 generated tokens. One run measured 14.5 t/s eager and 12.9 t/s deferred, so there is no proven speed gain yet; deferred mode is opt-in. `LLAMA_MTP_EAGER_CATCHUP=1` forces the original eager schedule. |
+| SYCL blocked GDN | `GGML_SYCL_GDN_BLOCKED=1` | A synthetic supported operation (4 heads, width 128, 64 tokens) measured about 27.1 to 24.1 us. This is an operation-level result, not a whole-model speedup. |
+| Vulkan blocked GDN | `GGML_VK_GDN_BLOCKED=1` | The same synthetic operation measured about 107.7 to 39.1 us. It remains opt-in and supports the scalar-gate form only. |
+| Vulkan q4_0 decode attention | `GGML_VK_FA_DEC=1` | A p512/tg128 check showed no speed difference from fallback and a short fixed-seed output mismatch. Keep disabled unless a workload-specific validation shows a benefit. |
+| SYCL quantized GQA tile | `GGML_SYCL_FA_QUANT_GQA_TILE=1` | No measurable B580 speedup; keep disabled. |
+| SYCL direct q4_0 cache decode | `GGML_SYCL_FA_Q4_DIRECT=1` | Experimental portable SYCL kernel adapted from Torchit. It is restricted to F32 queries/outputs, 256-wide heads, 6:1 GQA, 1–4 query tokens, q4_0 K/V, no sinks/ALiBi/softcap, and an optional F16 mask. A verbose OpenCL trace confirmed `Q4-DEC` dispatch on Bonsai; one fixed-seed 32-token output exactly matched the existing path. The runs were too short and variable to establish a speedup. |
+
+For long context, use q4_0 K/V caches and `GGML_SYCL_FA_ONEDNN_MAX_KV=98304` to cap the oneDNN attention route. With W8A8 off, a real 115,000-token prefill completed at 383.0 tokens/s. Another run prefilling 115,000 tokens and then measuring a further 512-token batch at that depth reached 205.2 tokens/s; 32 generated tokens with that context resident measured 3.54 tokens/s. These were single runs using `batch=1024`, `ubatch=512`, and q4_0 caches. The standard benchmark did not activate speculative MTP for the long-context decode measurement.
+
+The Torchit PTQ1 XMX path is now ported and opt-in. An isolated Level Zero 1.32.0 loader fixes the basic launch failure, and a separate PTQ1 device library avoids oneMKL's external-image import conflict. Native T2 measured 715.2 prompt and 32.9 decode tokens/s versus 568.2 and 8.0 with it disabled (pp512/tg128, three repetitions). See [the setup, correctness checks, and memory limits](bonsai-ptq1-level-zero.md). The earlier direct q4_0 attention path remains separately opt-in; these measurements do not establish its speedup.
+
 ## Router and WebUI
 
 Start the router with the models directory:
@@ -48,17 +129,82 @@ global `GGML_OPENVINO_DEVICE` setting.
 
 ## Validation matrix
 
-The local `/mnt/Data/Models` inventory was used for runtime checks:
+The table includes recorded checks against the current and earlier model
+inventories. Availability was rechecked on 2026-09-30 in both
+`/mnt/Data/Projects/Models` and `/mnt/Data/Models`; rows marked historical are
+not currently available for repeat testing.
 
-| Model | Vulkan | SYCL | OpenVINO GPU |
-| --- | --- | --- | --- |
-| Llama 3.2 1B Q4_K_M | pass | pass | pass |
-| Gemma 4 12B QAT UD-Q4_K_XL | generated | generated | generated |
-| Qwen 3.8 27B GSQ IQ3_XXS MTP | generated | generated | not validated: initialization timeout |
-| Qwen 3.8 27B UD-Q2_K_XL | generated | generated | unsupported: GPU memory allocation |
-| Ternary Bonsai 2 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
-| Ternary Bonsai 2 27B PTQ1_0 | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
-| Bonsai 27B PQ2_0 | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+| Model | Availability | Vulkan | SYCL | OpenVINO GPU |
+| --- | --- | --- | --- | --- |
+| Llama 3.2 1B Q4_K_M | historical | pass | pass | pass |
+| Qwen2.5 Coder 7B Q4_K_M | present | not measured here | not measured here | pass (stateful generation) |
+| Qwen3.5 9B Q4_K_M | present | pass | pass | pass after GatedDeltaNet view-head fix at context 256; default-context CLI hit GPU resource limit |
+| Gemma 4 E2B Q4_K_XL | present | GQA8 path measured | GQA8 path measured | SWA path passes with decoder update |
+| Gemma 4 E2B Q8_K_XL | present | GQA8 path measured | GQA8 path measured | SWA p640 pass; A/B throughput neutral |
+| Gemma 4 12B QAT UD-Q4_K_XL | historical | generated | generated | generated |
+| Qwen 3.8 27B GSQ IQ3_XXS MTP | historical | generated | generated | not validated: initialization timeout |
+| Qwen 3.8 27B UD-Q2_K_XL | historical | generated | generated | unsupported: GPU memory allocation |
+| Ternary Bonsai 2 27B PQ2_0 | present | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+| Ternary Bonsai 2 27B PTQ1_0 | present | pass (Vulkan, as recorded in the LocalDesign evaluation) | inference completed (native MMVQ; OpenCL B580 device trace confirmed) | not validated |
+| Bonsai 27B PQ2_0 | historical | pass (native PQ2 MMQ; f16 fallback available) | generated (native MMVQ) | unsupported: GPU memory allocation |
+
+The Vulkan graph now also fuses GELU, sigmoid, SiLU, or softplus followed by
+MUL into one dispatch. This covers f16/f32, broadcast and repeated operands,
+and view-mediated graphs. The B580 Vulkan backend-op suite passed 104/104
+cases. Runtime profiling confirmed 35 GELU_MUL dispatches for Gemma 4 E2B and
+24 SOFTPLUS_MUL dispatches for Qwen3.5 9B.
+
+Full-model throughput was effectively neutral in the longer p640/n8
+comparison: Gemma 4 E2B Q4 measured baseline 867.32±0.69 prompt / 54.24±0.20
+decode tokens/s and candidate 868.67±4.82 / 54.48±0.23; Q8 measured baseline
+837.35±3.88 / 29.49±0.01 and candidate 836.51±3.33 / 29.55±0.03. Short
+p128/n64 Q4 prompt was lower with the candidate (959.59±1.78 versus
+973.95±4.77), while Q8 prompt runs varied substantially on repeat; decode
+remained about the same. This reduces intermediate launches for a real model
+pattern, but these B580 model runs do not establish an end-to-end speedup.
+
+The selective OpenVINO SWA decoder update follows the relevant cache-geometry
+and per-layer KV-shape work from upstream. Gemma 4 E2B Q4_K_XL has a 512-token
+sliding window and mixed full/SWA layers. On the B580 `OPENVINO0`, matched
+`llama-bench` p1024/n8/r3 measured baseline 7213.51±54.41 prompt and
+31.30±0.74 decode tokens/s; with the update it measured 7754.04±37.81 prompt
+and 34.15±1.05 decode tokens/s (+7.5% prompt, +9.1% decode). Both benchmark
+runs completed. A bounded fixed-seed `llama-cli --single-turn` call with a
+550-repeat prompt also completed with the update; the same call on the
+unmodified decoder failed with `Compute error`. This validates the SWA path
+for the E2B Q4 model.
+
+The Q8_K_XL variant also completed on `OPENVINO0` at p640/n8/r3, crossing the
+same 512-token window. Baseline measured 3651.50±142.23 prompt and 31.58±1.15
+decode tokens/s; the decoder update measured 3760.17±146.75 prompt and
+31.37±0.45 decode tokens/s. The spreads overlap, so Q8 shows no clear
+throughput gain from this decoder change, but it confirms that the SWA path
+runs with both Q4 and Q8 weights. Long-prompt Q8 CLI output has not been
+compared.
+
+The Qwen3.5 OpenVINO failure was a repeated GQA expansion in the GatedDeltaNet
+translator. Its metadata shape reported 16 Q/K heads, while the resolved Q
+view already had 32; tiling from the metadata count expanded Q/K to 64 heads
+against 32 value heads, which OpenVINO rejected. The translator now derives
+the count from the resolved Q node and checks that the value-head count is
+divisible. Before the fix, both CPU and GPU graph conversion failed with this
+shape error. Afterward, B580 `OPENVINO0` `llama-bench` at p128/n8/r1 completed
+at 1078.85 prompt and 12.58 decode tokens/s; a fixed-seed single-turn CLI
+generated 8 tokens at 8.8 tokens/s with `-c 256 -b 128 -ub 128`. OpenVINO CPU
+also completed p128/n1. The default-context CLI exceeded GPU resources, so this
+does not yet establish stability at larger contexts. The synthetic
+`GATED_DELTA_NET` backend suite reported 13/18 supported cases passing both
+before and after this change; the same five existing accuracy/rows-mode cases
+failed on both revisions.
+
+The OpenVINO GPU plugin is available on the B580. On Qwen2.5 Coder 7B Q4_K_M
+with stateful execution, the existing KV-state sequence-axis relayout measured
+2777.52±269.83 prompt and 39.86±0.34 decode tokens/s when disabled, versus
+2829.99±161.50 prompt and 43.63±0.28 decode tokens/s when enabled
+(p128/n64/r3). The decode gain was about 9.5%; the prompt difference was within
+the sample spread. Fixed-seed 32-token generation matched exactly. This relayout
+is already present in the fork and is enabled for OpenVINO GPU; disable it with
+`GGML_OPENVINO_DISABLE_KV_STATE_RELAYOUT=1` for comparison.
 
 Gemma uses a reasoning-style response format, so a short generation may begin
 with a thinking marker rather than the requested literal answer. Vulkan PQ2 uses
