@@ -79,6 +79,7 @@ All on `build-live`, after one display moved to the iGPU (desktop VRAM about 660
 | GPU layer count after the display move | Applied: 9B `-ngl 22` -> 25, 7B `-ngl 24` -> 28 | `compare-ngl-*` |
 | `ngram-simple` on code-edit prompts | Applied to the 9B, 3B and 1.3B models | `spec-tune-qwen3b`, `spec-edit-qwythos9b`, `spec-single-1p3b`, `spec-load-1p3b` |
 | `ngram-simple` size n / m, `ngram-map-k`, `ngram-map-k4v` | Defaults kept | `spec-tune-qwen3b` |
+| `ngram-simple` on the 7B with 2000-token answers | 1.4x to 2.0x, but the answer changes. Not applied | `spec-r1-7b-long` |
 | Draft-model speculative decoding (`draft-simple`) | No-go | `spec-draft-qwen3b`, `spec-r1-7b` |
 | `GGML_CUDA_GRAPH_OPT=1` under server load | No gain | `spec-load-1p3b`, `spec-single-1p3b` |
 | `GGML_CUDA_DISABLE_FUSION=1` | Slower, default kept | `compare-fusion-*` |
@@ -122,6 +123,7 @@ t/s, `-d 0,15360 -p 512 -n 32`. Peak VRAM includes the desktop.
 
 - Output text is identical to the run without it, except the 7B refactor answer and the first 1.3B answer under load.
 - The 7B model thinks first, so the 400 tokens are reasoning text and there is nothing to copy. No gain measured, not applied there.
+- 7B again with 2000 tokens per answer (`spec-r1-7b-long`, `-ngl 28`, 16K context): edit 44.3 -> 88.9 t/s (2.0x), refactor 45.2 -> 62.5 t/s (1.4x). The text is not the same as without it. Refactor ends with the same code. Edit does not: the run without it gives the code after 1760 tokens, the run with it is still in the thinking part at 2000 tokens and gives no code. The model repeats its own reasoning and `ngram-simple` copies that. Faster, but a worse answer on one of two prompts, so not applied.
 - Size n (lookup length): n=8 and n=6 are 9-25% faster than n=12 on the three code prompts, but they draft on the open question too, with 0-1% accepted. That costs 2-7% there and changes the text. n=16 and m=24 are slower, m=96 is equal. Defaults kept.
 - `ngram-map-k` and `ngram-map-k4v` match the default on rewrite and do nothing on edit and refactor.
 
@@ -184,12 +186,11 @@ Both are calculations from the audit. Nothing in `results/` supports or contradi
 
 ## 4. Backlog: unverified leads
 
-Nothing below has been measured here. The ideas past the audit came from a chat, and the PR numbers, forks, tools and speedups it cited have not been checked. Treat each line as a lead to verify, not as a result.
+Nothing below has been measured here, except where a line says what was checked. The ideas past the audit came from a chat, and the PR numbers, forks, tools and speedups it cited have not been checked. Treat each line as a lead to verify, not as a result.
 
 ### Build and runtime switches
-- ik_llama.cpp as an upper-bound probe on the same models (plan item 9). Cloned to `~/src/ik_llama.cpp`, not built.
-- Draft types that need their own draft model: `draft-mtp`, `draft-dflash`, `draft-eagle3`, `draft-dspark`.
-- `ngram-simple` on the 7B model with answers long enough to get past the thinking part.
+- ik_llama.cpp as an upper-bound probe on the same models (plan item 9). Cloned to `~/src/ik_llama.cpp` (commit fdb8e67), not built: the build of external code was not permitted in the agent session. Build it by hand, then run `bench.sh` on its build directory.
+- Draft types that need their own draft model (`draft-mtp`, `draft-dflash`, `draft-eagle3`, `draft-dspark`). Checked 2026-10-06: each needs a head trained for the exact target model. No published head for Qwen2.5-3B, R1-distill-Qwen-7B or deepseek-coder-1.3b. `draft-mtp` needs MTP tensors in the model file and the Qwythos 9B file has none. One candidate is left: `EntityDeletr/Qwen3.5-9B-DFlash-GGUF` (914 MB, trained for base Qwen3.5-9B; Qwythos is a fine-tune of it). It is downloaded to `~/.lmstudio/models/EntityDeletr/Qwen3.5-9B-DFlash-GGUF/`, but the run was not permitted in the agent session. To test: `spectest.py` on the 9B with `--spec-type draft-dflash -md <file> -ngld 0`, and with `-ngl 20 -ngld 99` against `none` at `-ngl 20`.
 - Pinned host memory for KV in RAM (plan item 11). Only the `-nkvo 1` rows could gain.
 
 ### Already in place (checked on this machine)
@@ -202,7 +203,7 @@ Nothing below has been measured here. The ideas past the audit came from a chat,
 ### System tuning
 State today: shmem THP is `never`, the kernel command line has no `mitigations=` or `amd_iommu=` entry, and the 1660 Ti still drives one display (660-760 MiB of VRAM in use by the desktop).
 - One display is on the iGPU since 2026-10-06; the other one stays on the 1660 Ti. Moving it would free the room for the 7B model with all layers on the GPU (section 2).
-- EXPO / DDR5 speed and FCLK (plan item 6). Affects CPU layers and KV in RAM only.
+- EXPO / DDR5 speed and FCLK (plan item 6). Affects CPU layers and KV in RAM only. Not measured: needs the BIOS. After a change, rerun `bench.sh` (9B hybrid and CPU rows) and the `-nkvo 1` rows of `kvmatrix.sh`.
 - C-state limits, IRQ affinity, explicit CPU affinity, SMT off, real-time scheduling.
 - shmem THP, proactive compaction, swappiness, zram against zswap. Huge pages for model and KV memory.
 - GPU persistence mode, power limit.
@@ -212,7 +213,7 @@ State today: shmem THP is `never`, the kernel command line has no `mitigations=`
 
 ### Long context
 - KV streaming to RAM or NVMe, CPU-offloaded KV. Listed in the README as not done on purpose; the `-nkvo 1` rows of the KV matrix show the cost today (13.9 against 32.6 t/s at 16K, q8_0).
-- Lower-bit KV: Turbo4 / TurboQuant (plan item 10), CommVQ, 1-2 bit KV. Not in this tree; each needs a quality check (KLD or perplexity) before a speed number means anything.
+- Lower-bit KV: Turbo4 / TurboQuant (plan item 10), CommVQ, 1-2 bit KV. Checked 2026-10-06: no such KV type in this tree or in the ik_llama.cpp clone, so there is nothing to measure. Each would need new code and a quality check (KLD or perplexity) before a speed number means anything.
 - KV eviction or compression schemes: Rolling KV, KVMem, StreamingLLM, DuoAttention. Research code, not in this tree.
 - RoPE / YaRN context extension (`--rope-scaling`). Exists in this tree; changes output quality, not speed.
 

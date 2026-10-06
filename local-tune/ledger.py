@@ -273,6 +273,7 @@ ngram = [
     dict(title='DeepSeek Coder 1.3B, raw completion', unit='tokens/sec', labels=True,
         groups=[dict(label=lab, bars=[bar('off', s[('graphs on (default)', 'complete')], 'b2', True), bar('ngram-simple', s[('ngram-simple', 'complete')], 'final')]) for lab, s in (('one request', s1), ('4 requests at once, total', s4))]),
     spec_panel('R1-distill 7B, all on GPU: not applied', 'r1-7b', [('none', 'off', 'b2'), ('ngram-simple', 'ngram-simple', 'b1')], foot='This model thinks first, so the 400 measured tokens are reasoning text with nothing to copy.'),
+    spec_panel('R1-distill 7B, 2000-token answers: not applied', 'r1-7b-long', [('none', 'off', 'b2'), ('ngram-simple', 'ngram-simple', 'b1')], foot='Faster, but the text changes. On the edit prompt the answer was still in the thinking part at 2000 tokens and gave no code; without ngram-simple the code came after 1760 tokens.'),
 ]
 tune = [spec_panel('Lookup sizes and other ngram types, Qwen2.5 3B', 'tune-qwen3b', [('none', 'off', 'b2'), ('simple n12 m48 (default)', 'n=12 m=48, default', 'final'), ('simple n6 m48', 'n=6 m=48', 'b1'), ('simple n8 m48', 'n=8 m=48', 'b1'), ('simple n16 m48', 'n=16 m=48', 'b1'), ('simple n12 m24', 'n=12 m=24', 'b1'), ('simple n12 m96', 'n=12 m=96', 'b1'), ('simple n8 m96', 'n=8 m=96', 'b1'), ('map-k', 'ngram-map-k', 'b1'), ('map-k4v', 'ngram-map-k4v', 'b1')],
     foot='n=6 and n=8 are faster on code but slow the open question by 2 to 7% and change its text. The map types only help on a straight copy.')]
@@ -303,7 +304,7 @@ switches = [
 # decision ledger: one row per decision, verdict first
 def pct(a, b): return f'{(a/b-1)*100:+.0f}%'
 def xf(a, b): return f'{a/b:.1f}x'
-t3 = spec('tune-qwen3b'); e9 = spec('edit-qwythos9b'); dr = spec('draft-qwen3b'); DEF = 'simple n12 m48 (default)'
+r7 = spec('r1-7b-long'); t3 = spec('tune-qwen3b'); e9 = spec('edit-qwythos9b'); dr = spec('draft-qwen3b'); DEF = 'simple n12 m48 (default)'
 g9 = [e9[('ngram-simple', p)]['v']/e9[('none', p)]['v'] for p in ('edit', 'refactor')]
 g3 = [t3[(DEF, p)]['v']/t3[('none', p)]['v'] for p in ('rewrite', 'edit', 'refactor')]
 gall = g9+g3
@@ -331,15 +332,15 @@ DEC = [
  ('no', 'Rejected', 'Draft model (0.5B drafting for the 3B)', f'{min(dfree)*100:+.0f}%', f'on open questions in the worst variant, {max(dfree)*100:+.0f}% in the best; at most 1.7x on code, where ngram-simple gives 3x', 'spec-draft-qwen3b, spec-r1-7b', 'draft'),
  ('no', 'Rejected', 'ngram-mod', 'changes answers', 'faster than ngram-simple, but it remembers earlier requests and the text differs from the baseline', 'spec-qwen3b, spec-qwythos9b', None),
  ('no', 'Rejected', 'GGML_CUDA_DISABLE_FUSION=1', f'{min(fus)*100:+.0f} to {max(fus)*100:+.0f}%', 'writing is slower on every model; prompt reading equal', 'compare-fusion-*', 'switches'),
- ('no', 'Not applied', 'ngram-simple on R1-distill 7B', '0%', 'the model thinks first, so there is nothing to copy in the measured tokens', 'spec-r1-7b', 'ngram'),
+ ('no', 'Not applied', 'ngram-simple on R1-distill 7B', f'{r7[("ngram-simple", "refactor")]["v"]/r7[("none", "refactor")]["v"]:.1f}x to {r7[("ngram-simple", "edit")]["v"]/r7[("none", "edit")]["v"]:.1f}x', f'on 2000-token answers ({r7[("none", "edit")]["v"]:.0f} to {r7[("ngram-simple", "edit")]["v"]:.0f} t/s on the edit), but the text changes: the edit answer was still thinking at the token limit and gave no code. 0% on 400-token answers', 'spec-r1-7b-long, spec-r1-7b', 'ngram'),
  ('no', 'Not applied', 'R1-distill 7B with all 29 layers on the GPU', pct(n7a, n7n), 'faster again, but it leaves 180 MiB and the gateway does not load it; needs the second display off the card', 'compare-ngl-7b-*', 'layers'),
- ('open', 'Open', 'ik_llama.cpp as an upper-bound probe', '-', 'cloned to ~/src/ik_llama.cpp, not built', 'TRIALS.md, section 4', None),
- ('open', 'Open', 'ngram-simple on the 7B with longer answers', '-', 'needs answers long enough to get past the thinking part', 'TRIALS.md, section 4', None),
- ('open', 'Open', 'Draft types that need their own draft model', '-', 'draft-mtp, draft-dflash, draft-eagle3, draft-dspark', 'TRIALS.md, section 4', None),
- ('open', 'Open', 'EXPO / DDR5 speed, kernel and system tuning', '-', 'needs BIOS or root; affects CPU layers and memory kept in RAM only', 'TRIALS.md, section 4', None),
- ('open', 'Open', 'Lower-bit conversation memory (Turbo4 and similar)', '-', 'not in this tree; needs a quality check before a speed number means anything', 'TRIALS.md, section 4', None),
+ ('no', 'Not available', 'Lower-bit conversation memory (Turbo4 and similar)', 'no code', 'no such memory type in this tree or in the ik_llama.cpp clone; it would have to be written, with a quality check', 'TRIALS.md, section 4', None),
+ ('no', 'Not available', 'Draft types with their own draft model, on the 3B, 7B and 1.3B', 'no draft', 'no published draft head for these three models; draft-mtp needs a head inside the model file and the 9B file has none', 'TRIALS.md, section 4', None),
+ ('open', 'Blocked', 'draft-dflash on Qwythos 9B', '-', 'one draft exists (Qwen3.5-9B-DFlash, 914 MB, downloaded); the run that loads this third-party file was not permitted in the session', 'TRIALS.md, section 4', None),
+ ('open', 'Blocked', 'ik_llama.cpp as an upper-bound probe', '-', 'cloned to ~/src/ik_llama.cpp; the build of external code was not permitted in the session', 'TRIALS.md, section 4', None),
+ ('open', 'Blocked', 'EXPO / DDR5 speed, kernel and system tuning', '-', 'needs the BIOS, root and a reboot; affects CPU layers and memory kept in RAM only', 'TRIALS.md, section 4', None),
 ]
-GROUPS = [('yes', 'Kept', 'In the code or in the gateway config today.'), ('same', 'Measured, default kept', 'No gain large enough to change a setting.'), ('no', 'Rejected', 'Slower, unstable, or it changes the output.'), ('open', 'Not measured yet', 'Leads from the backlog.')]
+GROUPS = [('yes', 'Kept', 'In the code or in the gateway config today.'), ('same', 'Measured, default kept', 'No gain large enough to change a setting.'), ('no', 'Rejected', 'Slower, unstable, or it changes the output.'), ('open', 'Not measured yet', 'Blocked: each one needs a step by the owner of the machine.')]
 ledger = ''
 for kind, gname, gdesc in GROUPS:
     rows = [d for d in DEC if d[0] == kind]

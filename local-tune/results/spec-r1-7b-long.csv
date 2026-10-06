@@ -1,0 +1,13 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,edit,0,1760,43.47,0,0,8e61c8d4
+none,edit,1,1760,44.75,0,0,8e61c8d4
+none,edit,2,1760,44.53,0,0,8e61c8d4
+none,refactor,0,1109,45.54,0,0,867d693a
+none,refactor,1,1109,45.61,0,0,867d693a
+none,refactor,2,1109,44.42,0,0,867d693a
+ngram-simple,edit,0,2000,88.25,1468,1186,a98cc8c0
+ngram-simple,edit,1,2000,88.44,1468,1186,a98cc8c0
+ngram-simple,edit,2,2000,89.87,1468,1186,a98cc8c0
+ngram-simple,refactor,0,1223,62.07,1008,531,7c100cde
+ngram-simple,refactor,1,1223,61.55,1008,531,7c100cde
+ngram-simple,refactor,2,1223,63.74,1008,531,7c100cde

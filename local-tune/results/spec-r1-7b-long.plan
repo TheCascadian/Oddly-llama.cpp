@@ -1,0 +1,5 @@
+title: ngram-simple on the 7B model with answers long enough to get past the thinking part (R1 7B Q4_K_S, -ngl 28, 16K context)
+prompts: edit refactor
+n_predict: 2000
+none |
+ngram-simple | --spec-type ngram-simple

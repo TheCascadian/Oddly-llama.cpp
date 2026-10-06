@@ -7,7 +7,7 @@ Prompts: "rewrite" repeats a source file with one rename (much repeated text), "
 "edit" adds a parameter to one function and "refactor" changes every function (both print the full file again).
 "complete" is the first half of the file as a raw prompt for a completion model.
 Optional results/spec-<label>.plan: "title: text", "prompts: names", "mode: completion" (raw prompt, no chat template),
-"parallel: N" (N requests at once, speed is all tokens over wall time), then one variant per line: "name | ENV=1 ... server args". The first variant is the baseline."""
+"parallel: N" (N requests at once, speed is all tokens over wall time), "n_predict: N" (tokens per answer), then one variant per line: "name | ENV=1 ... server args". The first variant is the baseline."""
 import csv, hashlib, json, os, re, subprocess, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
@@ -27,7 +27,7 @@ PROMPTS = {
 
 def plan(label):
     """(title, prompt names, variants, options) from results/spec-<label>.plan; without a plan the three built-in variants on rewrite and free."""
-    title, prompts, variants, opts = "", ["rewrite", "free"], [], {"mode": "chat", "parallel": "1"}
+    title, prompts, variants, opts = "", ["rewrite", "free"], [], {"mode": "chat", "parallel": "1", "n_predict": str(N_PREDICT)}
     try:
         lines = open(os.path.join(HERE, "results", f"spec-{label}.plan")).read().splitlines()
     except OSError:
@@ -46,12 +46,12 @@ def plan(label):
     return title, prompts, variants, opts
 
 
-def ask(prompt, chat):
+def ask(prompt, chat, n):
     """One request; returns (timings, text)."""
     if not chat:
-        r = post("/completion", {"prompt": prompt, "temperature": 0, "seed": 1, "n_predict": N_PREDICT, "cache_prompt": False})
+        r = post("/completion", {"prompt": prompt, "temperature": 0, "seed": 1, "n_predict": n, "cache_prompt": False})
         return r["timings"], r["content"]
-    r = post("/v1/chat/completions", {"messages": [{"role": "user", "content": prompt}], "temperature": 0, "seed": 1, "max_tokens": N_PREDICT, "cache_prompt": False, "chat_template_kwargs": {"enable_thinking": False}})
+    r = post("/v1/chat/completions", {"messages": [{"role": "user", "content": prompt}], "temperature": 0, "seed": 1, "max_tokens": n, "cache_prompt": False, "chat_template_kwargs": {"enable_thinking": False}})
     msg = r["choices"][0]["message"]
     return r["timings"], (msg.get("reasoning_content") or "") + (msg.get("content") or "")
 
@@ -88,7 +88,7 @@ def main():
                 for rep in range(REPS):
                     t0 = time.time()
                     with ThreadPoolExecutor(par) as ex:
-                        res = list(ex.map(lambda _: ask(prompt, opts["mode"] == "chat"), range(par)))
+                        res = list(ex.map(lambda _: ask(prompt, opts["mode"] == "chat", int(opts["n_predict"])), range(par)))
                     n = sum(t["predicted_n"] for t, _ in res)
                     tps = res[0][0]["predicted_per_second"] if par == 1 else n / (time.time() - t0)
                     text = "".join(x for _, x in res)
@@ -106,7 +106,7 @@ def render(label):
     title, prompts, variants, opts = plan(label)
     base_name = variants[0][0]
     total = len(variants) * len(prompts) * REPS
-    L = [f"{B}  SPECULATIVE DECODING TEST{X}  {D}{label}  {title}  ·  llama-server, temperature 0, {N_PREDICT} tokens per answer, {REPS} repetitions" + (f", {opts['parallel']} requests at once" if opts["parallel"] != "1" else "") + f"{X}", ""]
+    L = [f"{B}  SPECULATIVE DECODING TEST{X}  {D}{label}  {title}  ·  llama-server, temperature 0, {opts['n_predict']} tokens per answer, {REPS} repetitions" + (f", {opts['parallel']} requests at once" if opts["parallel"] != "1" else "") + f"{X}", ""]
     L += [f"  Progress  {watch.bar(len(rows) / total, 30)} {B}{len(rows)}/{total}{X}  " + (f"{G}✔ ALL DONE{X}" if len(rows) >= total else f"{Y}● running{X}"), ""]
     L += watch.gpu_panel() + [""]
     L += [f"  {B}RESULTS{X}  {D}writing speed in tokens/sec, higher is better. rewrite = repeat a file with one rename, edit = change one function, refactor = change every function, free = open question{X}", ""]
