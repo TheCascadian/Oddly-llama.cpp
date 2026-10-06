@@ -1,6 +1,7 @@
 # Local tuning: Ryzen 5 7600X + GTX 1660 Ti (6 GB), CachyOS
 
 Two code changes live on this branch. Both are measured on this machine only.
+Trials that did not ship and ideas not yet measured are in [TRIALS.md](TRIALS.md).
 
 | # | Change | Effect | Commit |
 |---|---|---|---|
