@@ -1,0 +1,6 @@
+title: Automatic layer fitting (--fit) against a fixed layer count (R1 7B Q4_K_S, 16K context, K q8 / V q4)
+prompts: free
+all 29 layers, fixed | -ngl 99
+fit, default margin 1024 MiB | --fit on -lv 4
+fit, margin 512 MiB | --fit on -fitt 512 -lv 4
+fit, margin 256 MiB | --fit on -fitt 256 -lv 4

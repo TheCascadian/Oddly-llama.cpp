@@ -1,0 +1,5 @@
+q8/q8, shipped build,12.7904,0.48664
+q4/q4, shipped build,4091.0607,197.41465
+q4/q4, old build (tensor-core kernels),4226.9842,203.69352
+q4/q4, shipped build, batch 64,3847.0862,185.58658
+q4/q4, attention on the CPU (KV in RAM),4064.3286,195.62199

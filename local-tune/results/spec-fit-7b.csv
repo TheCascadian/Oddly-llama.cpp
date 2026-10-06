@@ -1,0 +1,13 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+"all 29 layers, fixed",free,0,400,47.59,0,0,71b69ef5
+"all 29 layers, fixed",free,1,400,46.53,0,0,71b69ef5
+"all 29 layers, fixed",free,2,400,47.42,0,0,71b69ef5
+"fit, default margin 1024 MiB",free,0,400,34.07,0,0,ee9d4cb0
+"fit, default margin 1024 MiB",free,1,400,34.66,0,0,ee9d4cb0
+"fit, default margin 1024 MiB",free,2,400,34.91,0,0,ee9d4cb0
+"fit, margin 512 MiB",free,0,400,49.58,0,0,71b69ef5
+"fit, margin 512 MiB",free,1,400,47.57,0,0,71b69ef5
+"fit, margin 512 MiB",free,2,400,48.31,0,0,71b69ef5
+"fit, margin 256 MiB",free,0,400,49.49,0,0,71b69ef5
+"fit, margin 256 MiB",free,1,400,48.59,0,0,71b69ef5
+"fit, margin 256 MiB",free,2,400,48.24,0,0,71b69ef5

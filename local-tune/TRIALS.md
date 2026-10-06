@@ -154,6 +154,39 @@ qwen2.5-0.5b-instruct Q8_0 as draft for qwen2.5-3b, both on the GPU, t/s.
 | `-ub 1024` / `2048`, 2048-token prompt | 1.3B 2710 -> 2796 -> 2814, 3B 1227 -> 1257 -> 1263, 7B 645 -> 655 -> does not fit. 9B hybrid 486 and 477 -> 484 and 520 -> does not fit, not repeatable |
 | 9B hybrid: `GGML_CUDA_REGISTER_HOST=1`, `--poll 0` / `100`, `--prio 2`, `-C 0x3F --cpu-strict 1` | all 20.5-21.3 t/s decode against 21.3 and 19.1 for the two baseline passes |
 
+## 2b. KV precision trials, 2026-10-06
+
+Scope: a list of 11 KV ideas, less the ones already rejected. Runner for perplexity: `ppl.py` (16 chunks of 4096 tokens from the repo docs).
+
+| Trial | Outcome | Evidence |
+|---|---|---|
+| K q8 / V q4 on the 7B, all 29 layers | Kept in the code. +11% writing at 0K, +16% at 15K | `compare-kvmix-7b-confirm`, `ppl-kv-7b` |
+| q4_0 for K on the 7B | Rejected: perplexity 8.17 -> 1534 | `ppl-kv-7b`, `ppl-kq4-check` |
+| Mixed precision as a speed setting | No gain, memory only | `compare-kvmix-7b` |
+| K q8 / V q4 on the 9B | No gain; `-ngl 26` is a candidate with q8/q8 | `ppl-kv-9b`, `compare-kvmix-9b-ngl` |
+| `--fit` automatic layer count | Exists. Needs `-fitt 512` to match the fixed count | `spec-fit-7b` |
+
+R1-distill 7B, writing t/s, two passes each (`compare-kvmix-7b-confirm`):
+
+| Setup | 0K | 8K | 15K | Perplexity |
+|---|---|---|---|---|
+| `-ngl 28`, K q8 / V q8 (gateway today) | 48.2-48.7 | 35.1-35.3 | 28.3-28.4 | 8.181 |
+| `-ngl 99`, K q8 / V q4 | 53.4-54.0 | 40.2-40.3 | 32.8-32.9 | 8.204 |
+
+- Perplexity error is +/- 0.14, f16 KV gives 8.166. Prompt reading is equal. `test-backend-ops -o FLASH_ATTN_EXT` passes.
+- `-ngl 99` with q8/q8 failed at 15K in this session; with q8/q4 it ran in all four passes. V q4 frees about 130 MiB at 16K.
+- Code: the q8_0/q4_0 pair is added to the default vector-kernel list (`fattn.cu`, `CMakeLists.txt`). Other mixed pairs still need `-DGGML_CUDA_FA_ALL_QUANTS=ON`.
+- To use it: rebuild `build-live`, then set the 7B line in the gateway `models.conf` to `-ngl 99 ... -ctk q8_0 -ctv q4_0`. Not done by the agent session (not permitted).
+- K at q4_0 breaks this model on every path: 1534 on the GPU, 4227 on the old build and 4064 with attention on the CPU, against 12.8 for q8/q8 (4 chunks). So it is the format, not a kernel. The q4_0 rows of the README KV matrix are valid as speeds only.
+- The 9B keeps its perplexity with every type (3.716 f16, 3.709 q8/q8, 3.708 q8/q4, 3.725 q4/q4). Its KV is small, so V q4 frees about 40 MiB. `-ngl 26` runs with q8/q8: 25.6 / 22.9 / 21.0 t/s against 24.6 / 20.9 / 18.3 at `-ngl 25`. `-ngl 27` with q8/q4 ran once at 27.3 / 24.1 / 22.2 with 420 MiB left. Not applied: `-ngl 25` was chosen for headroom.
+- `--fit on` picks 25 of 29 layers with its default 1024 MiB margin (34.5 t/s). With `-fitt 512` or `-fitt 256` it picks 29, equal to the fixed count (48.5 against 47.2 t/s).
+- Not built, with the reason:
+  - Recent-token high-precision window: V q4 is already inside the error and K below q8 fails at any token age, so a window has nothing to win.
+  - Dequantize inside the kernel, q8 K with DP4A: already in the vector kernel.
+  - Shared GQA loads, tiled long-context kernel: rejected before (plan item 5; tile against vector in the README).
+  - Turbo4 / Turbo3 and 2-bit KV: no code in this tree. The K result rules out fewer bits for K on the 7B; only V could go lower.
+- Not done: the audit of KV and workspace allocation. One note from the kernel: with GQA the vector kernel reads each K/V head once per query head (7 times on the 7B).
+
 ## 3. Baseline, with one correction
 
 ### Figures that have saved results

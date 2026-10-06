@@ -316,25 +316,40 @@ for f in ('fusion-1p3b', 'fusion-7b-q8', 'fusion-9b-hybrid'):
 ub = [cmp_avg(f)[('ub 1024', True, 0)]['v']/cmp_avg(f)[('ub 512 (default)', True, 0)]['v']-1 for f in ('ubatch-1p3b', 'ubatch-3b', 'ubatch-7b-q8')]
 n9o, n9n, n7o, n7n, n7a = c9('22', False, 0)['v'], c9('25', False, 0)['v'], c7('24', False, 0)['v'], c7('28', False, 0)['v'], c7('99', False, 0)['v']
 forced = [kvv('f16', k, 0, d, False)/kvv('b1', k, 0, d, False)-1 for k in ('q8_0', 'q4_0') for d in (8192, 16384) if kvv('f16', k, 0, d, False)]
+def mix(name, label, pp, depth):
+    x = [float(r[-2]) for r in csv.reader(open(R+f'compare-{name}.csv')) if r[0].startswith(label) and bool(int(r[-8])) == pp and int(r[-6]) == depth]
+    return sum(x)/len(x)
+def pplv(name): return {r[0]: float(r[1]) for r in csv.reader(open(R+f'ppl-{name}.csv')) if r[1]}
+MC = 'kvmix-7b-confirm'; m_old = [mix(MC, 'ngl 28, q8/q8 (shipped)', False, d) for d in (0, 8192, 15360)]; m_new = [mix(MC, 'ngl 99, q8/q4', False, d) for d in (0, 8192, 15360)]
+pk = pplv('kv-7b'); p9 = pplv('kv-9b'); fit = spec('fit-7b')
+M9 = 'kvmix-9b-ngl'
 DEC = [
  ('yes', 'Shipped', 'Plain kernels on GTX 16xx, the card has no tensor cores', tiles[0]['v'], 'faster prompt reading; writing unchanged', 'commit a260d811e', 'fix'),
  ('yes', 'Shipped', 'Qwythos 9B: skip the fused gate path on CPU layers', '+20 to 35%', 'writing with layers on the CPU, 15.6 to 20.6 t/s hybrid', 'commit 52b730eb4', None),
  ('yes', 'Applied', 'R1-distill 7B: 28 layers on the GPU, was 24', pct(n7n, n7o), f'writing, {n7o:.1f} to {n7n:.1f} t/s; {pct(c7("28", False, 15360)["v"], c7("24", False, 15360)["v"])} with 15K in context', 'compare-ngl-7b-*', 'layers'),
  ('yes', 'Applied', 'Qwythos 9B: 25 layers on the GPU, was 22', pct(n9n, n9o), f'writing, {n9o:.1f} to {n9n:.1f} t/s; {pct(c9("25", False, 15360)["v"], c9("22", False, 15360)["v"])} with 15K in context', 'compare-ngl-9b-*', 'layers'),
+ ('yes', 'In the code', 'R1-distill 7B: all 29 layers on the GPU, with K q8 / V q4 memory', f'{pct(m_new[0], m_old[0])} to {pct(m_new[2], m_old[2])}', f'writing, {m_old[0]:.1f} to {m_new[0]:.1f} t/s empty and {m_old[2]:.1f} to {m_new[2]:.1f} with 15K in context; perplexity {pk["K q8 / V q8 (shipped)"]:.2f} to {pk["K q8 / V q4"]:.2f}, inside the error. The gateway line is not changed yet', 'compare-kvmix-7b-confirm, ppl-kv-7b', None),
  ('yes', 'Applied', 'ngram-simple on the 9B, 3B and 1.3B models', f'{min(gall):.1f}x to {max(gall):.1f}x', 'writing when the answer repeats the prompt (code edits); no cost on open questions, same text', 'spec-tune-qwen3b, spec-edit-qwythos9b', 'ngram'),
  ('same', 'Default kept', 'CUDA Graphs on or off', '0%', 'no difference larger than the gap between two passes of one variant', 'compare-graphs-*', 'switches'),
  ('same', 'Default kept', 'GGML_CUDA_GRAPH_OPT=1', '0%', 'on llama-server; llama-bench showed +2 to 5% on the 1.3B model only', 'spec-single-1p3b, spec-load-1p3b', 'switches'),
  ('same', 'Default kept', 'ngram-simple lookup sizes, ngram-map-k, ngram-map-k4v', 'n=12 m=48', 'shorter lookups are 9 to 25% faster on code but cost 2 to 7% on open questions and change the text', 'spec-tune-qwen3b', 'ngram'),
  ('same', 'Default kept', 'Larger prompt batches, -ub 1024 and 2048', f'{min(ub)*100:+.1f} to {max(ub)*100:+.1f}%', 'prompt reading, for 70 to 900 MiB of video memory', 'compare-ubatch-*', 'switches'),
  ('same', 'Default kept', 'Pinned host memory, --poll, --prio, core pinning', 'noise', 'all 20.5 to 21.3 t/s against 21.3 and 19.1 for the two baseline passes', 'compare-host-9b-hybrid', 'switches'),
+ ('same', 'Default kept', 'Mixed K / V precision as a speed setting', '0%', 'q8/q8, q8/q4, q4/q8 and q4/q4 write at the same speed with the same layer count; the gain is memory only (about 130 MiB at 16K on the 7B)', 'compare-kvmix-7b', None),
+ ('same', 'Default kept', 'Qwythos 9B: K q8 / V q4', 'no gain', f'this model keeps its perplexity with every type ({p9["K f16 / V f16"]:.2f} f16, {p9["K q4 / V q4"]:.2f} q4/q4) and its memory is small, so the pair frees almost nothing. 26 layers run with q8/q8 too: {mix(M9, "ngl 26, q8/q8", False, 0):.1f} against {mix(M9, "ngl 25, q8/q8 (shipped)", False, 0):.1f} t/s, a candidate', 'ppl-kv-9b, compare-kvmix-9b-ngl', None),
+ ('same', 'Already there', 'Automatic GPU layer selection (--fit)', '25 or 29', f'the default 1024 MiB margin picks 25 of 29 layers ({fit[("fit, default margin 1024 MiB", "free")]["v"]:.1f} t/s); with -fitt 512 it picks all 29, equal to the fixed count ({fit[("fit, margin 512 MiB", "free")]["v"]:.1f} against {fit[("all 29 layers, fixed", "free")]["v"]:.1f} t/s). No new code needed', 'spec-fit-7b', None),
+ ('same', 'Already there', 'Dequantize inside the attention kernel; q8 K with DP4A', 'in place', 'the vector kernel reads q4 / q8 memory directly and its K dot product uses dp4a. There is no f16 copy to remove', 'fattn-common.cuh', None),
  ('no', 'Rejected', 'f16-converting attention kernel for q8_0 / q4_0 memory', f'{min(forced)*100:+.0f}%', 'slower or equal in every cell, and the q8_0 16K case stopped running', 'kvmatrix-exp1-forced*', 'fix'),
  ('no', 'Dropped', 'Shared-GQA kernel for quantized memory', 'not built', 'the trial above was its gate and failed', 'TRIALS.md, item 5', None),
  ('no', 'Rejected', 'Draft model (0.5B drafting for the 3B)', f'{min(dfree)*100:+.0f}%', f'on open questions in the worst variant, {max(dfree)*100:+.0f}% in the best; at most 1.7x on code, where ngram-simple gives 3x', 'spec-draft-qwen3b, spec-r1-7b', 'draft'),
  ('no', 'Rejected', 'ngram-mod', 'changes answers', 'faster than ngram-simple, but it remembers earlier requests and the text differs from the baseline', 'spec-qwen3b, spec-qwythos9b', None),
  ('no', 'Rejected', 'GGML_CUDA_DISABLE_FUSION=1', f'{min(fus)*100:+.0f} to {max(fus)*100:+.0f}%', 'writing is slower on every model; prompt reading equal', 'compare-fusion-*', 'switches'),
+ ('no', 'Rejected', 'q4_0 for K (keys) on R1-distill 7B', f'{pk["K q4 / V q4"]:.0f}', f'perplexity, against {pk["K f16 / V f16"]:.2f} with f16. Same on the old build and on the CPU, so it is the format and not a kernel fault. The q4_0 rows of the KV matrix are speeds of a broken memory', 'ppl-kv-7b, ppl-kq4-check', None),
+ ('no', 'Not built', 'Recent tokens at high precision, older ones lower', 'no case', 'V at q4 is already inside the error for all tokens, and K below q8 fails on the 7B at any age. Nothing is left for a window to win', 'ppl-kv-7b', None),
+ ('no', 'Not built', 'Tiled long-context kernel, shared GQA loads', 'earlier result', 'the tile kernel was slower than the vector kernel at long context (38.6 against 42.2 t/s at 8K), and the shared-GQA kernel was dropped with its gate', 'README, TRIALS.md item 5', None),
  ('no', 'Not applied', 'ngram-simple on R1-distill 7B', f'{r7[("ngram-simple", "refactor")]["v"]/r7[("none", "refactor")]["v"]:.1f}x to {r7[("ngram-simple", "edit")]["v"]/r7[("none", "edit")]["v"]:.1f}x', f'on 2000-token answers ({r7[("none", "edit")]["v"]:.0f} to {r7[("ngram-simple", "edit")]["v"]:.0f} t/s on the edit), but the text changes: the edit answer was still thinking at the token limit and gave no code. 0% on 400-token answers', 'spec-r1-7b-long, spec-r1-7b', 'ngram'),
- ('no', 'Not applied', 'R1-distill 7B with all 29 layers on the GPU', pct(n7a, n7n), 'faster again, but it leaves 180 MiB and the gateway does not load it; needs the second display off the card', 'compare-ngl-7b-*', 'layers'),
- ('no', 'Not available', 'Lower-bit conversation memory (Turbo4 and similar)', 'no code', 'no such memory type in this tree or in the ik_llama.cpp clone; it would have to be written, with a quality check', 'TRIALS.md, section 4', None),
+ ('no', 'Not applied', 'R1-distill 7B with all 29 layers on the GPU', pct(n7a, n7n), 'with q8/q8 memory it leaves 180 MiB and fails at 15K. Superseded: it fits with K q8 / V q4 (first row group)', 'compare-ngl-7b-*', 'layers'),
+ ('no', 'Not available', 'Lower-bit conversation memory (Turbo4 and similar)', 'no code', 'no such memory type in this tree or in the ik_llama.cpp clone. The 7B result also rules out fewer bits for K; only V could go lower', 'TRIALS.md, section 4', None),
  ('no', 'Not available', 'Draft types with their own draft model, on the 3B, 7B and 1.3B', 'no draft', 'no published draft head for these three models; draft-mtp needs a head inside the model file and the 9B file has none', 'TRIALS.md, section 4', None),
  ('open', 'Blocked', 'draft-dflash on Qwythos 9B', '-', 'one draft exists (Qwen3.5-9B-DFlash, 914 MB, downloaded); the run that loads this third-party file was not permitted in the session', 'TRIALS.md, section 4', None),
  ('open', 'Blocked', 'ik_llama.cpp as an upper-bound probe', '-', 'cloned to ~/src/ik_llama.cpp; the build of external code was not permitted in the session', 'TRIALS.md, section 4', None),
@@ -356,7 +371,21 @@ now = [
  dict(k='Qwen2.5 3B', v=f'{t3[(DEF, "free")]["v"]:.1f}', was=None, d='ngram-simple', x=f'{t3[(DEF, "edit")]["v"]:.0f} t/s on a code edit, was {t3[("none", "edit")]["v"]:.0f}'),
  dict(k='DeepSeek Coder 1.3B', v=f'{s1[("graphs on (default)", "complete")]["v"]:.0f}', was=None, d='ngram-simple', x=f'{s1[("ngram-simple", "complete")]["v"]:.0f} t/s when the completion repeats code, was {s1[("graphs on (default)", "complete")]["v"]:.0f}'),
 ]
-D.update(ledger=ledger, counts=counts, now=now, ngl=ngl7+ngl9, ngram=ngram, tune=tune, draft=draft, switches=switches)
+try: LAB = json.load(open(R+'lab-state.json'))
+except Exception: LAB = {}
+import time
+LW = {'same': ('same', 'No change'), 'faster': ('yes', 'Faster'), 'slower': ('no', 'Slower'), 'fail': ('no', 'Failed'), 'build failed': ('no', 'Build failed')}
+lab = ''
+for name, sv in LAB.items():
+    if not isinstance(sv, dict) or 'steps' not in sv: continue
+    k, word = LW.get(sv.get('state'), ('open', sv.get('state', 'not run').capitalize()))
+    when = time.strftime('%d %b %H:%M', time.localtime(sv['at'])) if sv.get('at') else 'never'
+    lab += f'<tr class="lg"><td colspan="4"><b>{name}</b> <span class="pill {k}">{word}</span> <span class="gd">last run: {when}</span></td></tr>'
+    for step, (stt, text, _) in sv['steps'].items():
+        k2, w2 = LW.get(stt, ('open', stt.capitalize()))
+        lab += f'<tr><td class="lp"><span class="pill {k2}">{w2}</span></td><td class="lw">{step}</td><td class="ly" colspan="2">{text or "-"}</td></tr>'
+lab = f'<table class="ledger"><thead><tr><th>Result</th><th>Step</th><th colspan="2">Candidate build against shipped build</th></tr></thead><tbody>{lab}</tbody></table>'
+D.update(lab=lab, ledger=ledger, counts=counts, now=now, ngl=ngl7+ngl9, ngram=ngram, tune=tune, draft=draft, switches=switches)
 
 out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'ledger.html')
 open(out, 'w').write(open(os.path.join(HERE, 'ledger.template.html')).read().replace('__DATA__', json.dumps(D)))

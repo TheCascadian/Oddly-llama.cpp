@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Live dashboard for the local-tune runners. Read-only; run: local-tune/watch.py
-Without a label it follows the newest run: kvmatrix.sh, compare.py or spectest.py.
+Without a label it follows the newest run: kvmatrix.sh, compare.py, spectest.py or ppl.py.
 With results/sequence.txt (lines: "bench|kv <label> <title>") it also shows every stage of a queued run.
 local-tune/watch.py <label> shows a saved run: a compare plan, a spectest label or the KV table of a finished stage."""
 import csv, os, re, sys, time
@@ -270,19 +270,19 @@ def render(stem="kvmatrix", st=()):
 
 
 def newest():
-    """(kind, name) of the run whose files changed last; kind is kv, compare or spec."""
+    """(kind, name) of the run whose files changed last; kind is kv, compare, spec or ppl."""
     best = ("kv", None, max(mtime("kvmatrix.log"), mtime("kvmatrix.csv")))
     for f in os.listdir(R):
         # spec logs are named per variant, so only the csv gives the label
-        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$", f)
+        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$|ppl-(.+?)\.(?:log|csv)$", f)
         if m and mtime(f) > best[2]:
-            best = ("compare" if m[1] else "spec", m[1] or m[2], mtime(f))
+            best = ("compare" if m[1] else "spec" if m[2] else "ppl", m[1] or m[2] or m[3], mtime(f))
     return best[:2]
 
 
 def other_view(kind, name):
-    import compare, spectest
-    return compare.render(name) if kind == "compare" else spectest.render(name)
+    import compare, ppl, spectest
+    return {"compare": compare, "spec": spectest, "ppl": ppl}[kind].render(name)
 
 
 if __name__ == "__main__":
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     clear = "" if once else "\033[H\033[J"
     try:
         while True:
-            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv")) if mtime(f)), ("kv", None))
+            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv"), ("ppl", f"ppl-{saved[0]}.plan")) if mtime(f)), ("kv", None))
             if kind != "kv":
                 # stays open after a run ends, so it moves on to the next run when one starts
                 sys.stdout.write(clear + other_view(kind, name)[0] + "\n"); sys.stdout.flush()

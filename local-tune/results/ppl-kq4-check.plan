@@ -1,0 +1,7 @@
+title: Is q4_0 K broken or only lossy? Same text, three builds and the CPU  (R1 7B Q4_K_S, 4 chunks)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -f local-tune/results/ppl-corpus.txt -c 4096 -b 512 --chunks 4 -t 6 -fa on
+q8/q8, shipped build | build-live | -ngl 28 -ctk q8_0 -ctv q8_0
+q4/q4, shipped build | build-live | -ngl 28 -ctk q4_0 -ctv q4_0
+q4/q4, old build (tensor-core kernels) | build-base | -ngl 28 -ctk q4_0 -ctv q4_0
+q4/q4, shipped build, batch 64 | build-live | -ngl 28 -ctk q4_0 -ctv q4_0 -b 64
+q4/q4, attention on the CPU (KV in RAM) | build-live | -ngl 28 -ctk q4_0 -ctv q4_0 -nkvo

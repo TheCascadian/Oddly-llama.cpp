@@ -154,13 +154,18 @@ section[id], .part[id] { scroll-margin-top: 12px; }
     <div class="eyebrow">GTX 1660 Ti 6 GB &middot; Ryzen 5 7600X &middot; branch local-1660ti</div>
     <h1>What was tried on this card, and what stayed</h1>
     <p class="lede">Every throughput trial from local-tune, verdict first. All bars are tokens per second and longer is better, unless the panel says otherwise. The small black mark on a bar is the spread between repetitions.</p>
-    <nav><a href="#decisions">Decisions</a><a href="#layers">GPU layers</a><a href="#ngram">ngram-simple</a><a href="#draft">Draft model</a><a href="#switches">Switches with no gain</a><a href="#fix">Kernel fix in detail</a></nav>
+    <nav><a href="#decisions">Decisions</a><a href="#lab">Automatic checks</a><a href="#layers">GPU layers</a><a href="#ngram">ngram-simple</a><a href="#draft">Draft model</a><a href="#switches">Switches with no gain</a><a href="#fix">Kernel fix in detail</a></nav>
   </header>
 
   <section id="decisions">
     <div class="counts" id="counts"></div>
     <div class="tablewrap" id="ledger"></div>
     <p class="note">The deciding number is the one that settled the row. Green is a gain that was kept, red is a loss or a blocker, grey is no real change.</p>
+  </section>
+
+  <section id="lab">
+    <div class="sechead"><h2>Automatic checks</h2><p>Written by <code>lab.py</code>. When a watched source file changes, it rebuilds the candidate build, runs the suites that cover the file and compares each number with the shipped build. No change means inside 3%.</p></div>
+    <div class="tablewrap" id="lab-table"></div>
   </section>
 
   <section>
@@ -303,6 +308,7 @@ function draw(id, panels, shared) {
 }
 document.getElementById('counts').innerHTML = D.counts.map(c => `<div class="${c.c}"><span class="v">${c.v}</span><span class="k">${c.k}</span></div>`).join('');
 document.getElementById('ledger').innerHTML = D.ledger;
+document.getElementById('lab-table').innerHTML = D.lab;
 document.getElementById('now').innerHTML = D.now.map(t =>
   `<div class="tile now"><div class="k">${t.k}</div><div class="v">${t.v}<span class="u">t/s</span>${t.was ? `<span class="was">was ${t.was}</span>` : ''}</div><div class="d">${t.d}</div>${t.x ? `<div class="x">${t.x}</div>` : ''}</div>`).join('');
 draw('ngl', D.ngl, false);

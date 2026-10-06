@@ -1,0 +1,6 @@
+title: lab: 9B with layers on the CPU, shipped against candidate  (Qwythos 9B Q4_K_M, -ngl 25, q8 KV)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -t 6 -fa 1 -ngl 25 -ctk q8_0 -ctv q8_0 -d 0,8192 -p 512 -n 32 -r 3
+shipped | build-live | |
+candidate | build-exp | |
+shipped again | build-live | |
+candidate again | build-exp | |

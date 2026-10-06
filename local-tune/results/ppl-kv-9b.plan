@@ -1,0 +1,6 @@
+title: Perplexity per KV type pair, K type / V type  (Qwythos 9B Q4_K_M, -ngl 25, 8 chunks of the repo docs)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -f local-tune/results/ppl-corpus.txt -c 4096 -b 512 --chunks 8 -ngl 25 -t 6 -fa on
+K f16 / V f16 | build-exp | -ctk f16 -ctv f16
+K q8 / V q8 (shipped) | build-exp | -ctk q8_0 -ctv q8_0
+K q8 / V q4 | build-exp | -ctk q8_0 -ctv q4_0
+K q4 / V q4 | build-exp | -ctk q4_0 -ctv q4_0

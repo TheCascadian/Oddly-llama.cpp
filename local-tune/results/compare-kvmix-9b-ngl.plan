@@ -1,0 +1,9 @@
+title: Does K q8 / V q4 make room for more layers at 16K?  (Qwythos 9B Q4_K_M)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -t 6 -fa 1 -d 0,8192,15360 -p 512 -n 32 -r 3
+ngl 25, q8/q8 (shipped) | build-live | | -ngl 25 -ctk q8_0 -ctv q8_0
+ngl 25, q8/q4 | build-exp | | -ngl 25 -ctk q8_0 -ctv q4_0
+ngl 26, q8/q4 | build-exp | | -ngl 26 -ctk q8_0 -ctv q4_0
+ngl 27, q8/q4 | build-exp | | -ngl 27 -ctk q8_0 -ctv q4_0
+ngl 28, q8/q4 | build-exp | | -ngl 28 -ctk q8_0 -ctv q4_0
+ngl 26, q8/q8 | build-live | | -ngl 26 -ctk q8_0 -ctv q8_0
+ngl 25, q8/q8 (shipped) again | build-live | | -ngl 25 -ctk q8_0 -ctv q8_0

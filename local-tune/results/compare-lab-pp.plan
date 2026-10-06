@@ -1,0 +1,6 @@
+title: lab: prompt reading and writing, shipped against candidate  (DeepSeek Coder 1.3B Q8_0, all on GPU)
+args: -m /home/wrekt/odysseus-local/models/deepseek-coder-1.3b-base-Q8_0.gguf -t 6 -fa 1 -ngl 99 -p 512 -n 128 -r 3
+shipped | build-live | |
+candidate | build-exp | |
+shipped again | build-live | |
+candidate again | build-exp | |

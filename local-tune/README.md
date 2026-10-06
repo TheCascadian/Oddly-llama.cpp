@@ -95,6 +95,10 @@ python3 local-tune/spectest.py build <label> <model.gguf> <server args>   # llam
 ```
 Live view in a second terminal: `local-tune/watch.py`. It follows the newest run (KV matrix, comparison or spectest); `local-tune/watch.py <label>` shows a saved one. Every runner writes a log with `START`, `TEST ... took=Ns`, `DONE ... took=Ns` and `ALLDONE total=Ns` lines, and the view shows a time table per row and context depth.
 
+One view for everything: `python3 local-tune/lab.py auto`. It shows every suite, watches the source files named in `suites.conf`, and on a change rebuilds `build-exp`, runs the suites that cover the changed files against `build-live`, and writes `ledger.html` again. `lab.py run [suite]` runs now, `lab.py accept` takes the current source as checked, `lab.py` alone is view only. Add a suite with one line in `suites.conf`.
+
+Perplexity check for KV format changes: `python3 local-tune/ppl.py run <name>` (plan in `results/ppl-<name>.plan`).
+
 Results page: `python3 local-tune/ledger.py` writes `local-tune/ledger.html` from the files in `results/`. It lists every decision with its verdict and deciding number, then the charts. After a new trial, add one row to `DEC` in `ledger.py` and run it again.
 
 Result files in `local-tune/results/`:
@@ -109,6 +113,8 @@ Result files in `local-tune/results/`:
 | `compare-ngl-*` | GPU layer count at 16K context, see TRIALS.md |
 | `compare-fusion-*`, `compare-ubatch-*`, `compare-host-*` | switches with no gain, see TRIALS.md |
 | `spec-*` | llama-server tests: speculative decoding and load, see TRIALS.md |
+| `compare-kvmix-*`, `ppl-*` | K / V precision pairs: speed and perplexity, see TRIALS.md section 2b |
+| `compare-lab-*`, `ppl-lab-*` | plans that `lab.py` runs on a source change |
 | `exp*`, `kvmatrix-exp*`, `base1`, `kvmatrix-base1` | earlier experiments kept for reference |
 
 ## Change 2: qwen35 GDN path on CPU layers
@@ -135,7 +141,8 @@ Kept at defaults after measuring: `GGML_CUDA_FORCE_MMQ` (no change, within 1%), 
 - Threads 6 (physical cores); 4/8 equal, 12 slightly worse.
 - `-ub 512`, flash attention on (`-fa on`); smaller ubatch is slower.
 - 9B Q4_K_M with `-c 16384 -ctk q8_0 -ctv q8_0`: `-ngl 25` (24.6 t/s, was 21.3 at `-ngl 22`). `-ngl 27` is the last one that fits, 28 does not.
-- 7B Q4_K_S with the same context: `-ngl 28` (48.2 t/s, was 35.1 at `-ngl 24`). All 29 layers fit but leave 180 MiB.
+- 7B Q4_K_S with the same context: `-ngl 28` (48.2 t/s, was 35.1 at `-ngl 24`). With `-ctk q8_0 -ctv q4_0` all 29 layers fit: `-ngl 99`, 53.7 t/s, perplexity equal (TRIALS.md section 2b).
+- Do not use `-ctk q4_0` on the 7B: perplexity goes from 8.2 to above 1500. `-ctv q4_0` is safe.
 - These two assume one display on the 1660 Ti (about 750 MiB of desktop VRAM). Table in TRIALS.md section 2.
 - `--spec-type ngram-simple` on llama-server: 2.2x to 7x writing speed when the answer repeats text from the prompt (code edits), no cost otherwise.
 - Models up to ~3B fully offload (`-ngl 99`).
