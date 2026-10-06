@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""Live dashboard for local-tune/kvmatrix.sh. Read-only; run: local-tune/watch.py
+With results/sequence.txt (lines: "bench|kv <label> <title>") it also shows every stage of a queued run.
+local-tune/watch.py <label> shows the saved KV table of a finished stage."""
+import csv, os, re, sys, time
+
+R = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
+CONFIGS = [(k, n) for k in ("f16", "q8_0", "q4_0") for n in (0, 1)]
+DEPTHS = (0, 8192, 16384)
+G, Y, RED, C, D, B, X = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[1m", "\033[0m"
+
+
+def read(name):
+    try:
+        return open(os.path.join(R, name), errors="replace").read().splitlines()
+    except OSError:
+        return []
+
+
+def results(stem="kvmatrix"):
+    out = {}
+    for r in csv.reader(read(stem + ".csv")):
+        if len(r) < 12 or not r[-2].replace(".", "").isdigit():
+            continue
+        try:
+            kv, nk = r[0], int(r[1][-1])
+            pp, tg, d, ts = int(r[-8]), int(r[-7]), int(r[-6]), float(r[-2])
+        except ValueError:
+            continue
+        out[(kv, nk, "pp" if pp else "tg", d)] = ts
+    return out
+
+
+def status(log):
+    cur, done, failed, vram, ram, peak = None, set(), set(), "-", "-", {}
+    for ln in log:
+        m = re.search(r"START ctk=ctv=(\S+) nkvo=(\d)", ln)
+        if m:
+            cur = (m[1], int(m[2]))
+        m = re.search(r"DONE (\S+) nkvo=(\d)", ln)
+        if m:
+            done.add((m[1], int(m[2])))
+        if re.search(r"out of memory|failed to create|error", ln, re.I) and cur:
+            failed.add(cur)
+        m = re.search(r"vram=(\d+) MiB ram_avail=(\d+)MB", ln)
+        if m and cur:
+            vram, ram = int(m[1]), int(m[2])
+            peak[cur] = max(peak.get(cur, 0), vram)
+    return cur, done, failed, vram, ram, peak
+
+
+def gpu():
+    import subprocess
+    q = "utilization.gpu,utilization.memory,memory.used,memory.total,temperature.gpu,power.draw,power.limit,clocks.sm,clocks.max.sm,clocks.mem,pcie.link.gen.current,pcie.link.width.current,fan.speed"
+    try:
+        o = subprocess.run(["nvidia-smi", f"--query-gpu={q}", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=3).stdout
+        return [float(x) if x.strip().replace(".", "").isdigit() else 0 for x in o.split(",")]
+    except Exception:
+        return None
+
+
+HIST = []
+W = 10  # width of every number column
+SPARK = " ▁▂▃▄▅▆▇█"
+
+
+def bar(frac, width=24, color=C):
+    n = max(0, min(width, round(frac * width)))
+    return f"{color}{'█' * n}{D}{'░' * (width - n)}{X}"
+
+
+def heat(v, lo, hi):
+    return G if v < lo else (Y if v < hi else RED)
+
+
+def cell(v, bad):
+    if v is not None:
+        return f"{G}{v:{W}.1f}{X}"
+    return f"{RED}{'FAIL':>{W}}{X}" if bad else f"{D}{'.':>{W}}{X}"
+
+
+def secs(t):
+    h, m, s = map(int, t.split(":"))
+    return h * 3600 + m * 60 + s
+
+
+def dur(s):
+    return f"{s // 60}m{s % 60:02d}s"
+
+
+def timing(log):
+    """Rows as [label, total secs or None while running, {depth: secs}] from START/TEST/DONE log lines."""
+    out, t0 = [], 0
+    for ln in log:
+        m = re.match(r"(\d\d:\d\d:\d\d) START (.+)", ln)
+        if m:
+            k = re.match(r"ctk=ctv=(\S+) nkvo=(\d)", m[2])
+            out.append([f"{k[1]} KV in {'RAM' if int(k[2]) else 'GPU'}" if k else m[2], None, {}]); t0 = secs(m[1])
+            continue
+        if not out:
+            continue
+        m = re.search(r"TEST \w+@(\d+) took=(\d+)s", ln)
+        if m:
+            out[-1][2][int(m[1])] = out[-1][2].get(int(m[1]), 0) + int(m[2])
+        m = re.match(r"(\d\d:\d\d:\d\d) DONE", ln)
+        if m:
+            k = re.search(r"took=(\d+)s", ln)
+            out[-1][1] = int(k[1]) if k else (secs(m[1]) - t0) % 86400
+    return out
+
+
+def phase_secs(name):
+    """Total run time of one log, None when it has no finished rows."""
+    t = [r[1] for r in timing(read(name)) if r[1] is not None]
+    return sum(t) if t else None
+
+
+def render_timing(log):
+    rows = timing(log)
+    if not any(r[1] is not None or r[2] for r in rows):
+        return []
+    depths = sorted({d for r in rows for d in r[2]})
+    L = [f"  {B}TIME{X}  {D}how long each row took, split by tokens already in context. Each part includes loading the model or filling the context{X}", ""]
+    def line(c1, parts, tot):
+        return f"  {c1:<28}|" + "".join((dur(parts[d]) if d in parts else ".").rjust(10) for d in depths) + f" |{tot:>11}"
+    hdr = f"  {'Row':<28}|" + "".join(f"@{d // 1024}k".rjust(10) for d in depths) + f" |{'Row total':>11}"
+    L += [f"{B}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
+    for label, tot, parts in rows:
+        L.append(line(label[:27], parts, dur(tot) if tot is not None else "running"))
+    allp = {d: sum(r[2].get(d, 0) for r in rows) for d in depths if any(d in r[2] for r in rows)}
+    L += [f"{B}" + line("All rows", allp, dur(sum(r[1] or 0 for r in rows))) + X, ""]
+    return L
+
+
+def mtime(name):
+    try:
+        return os.path.getmtime(os.path.join(R, name))
+    except OSError:
+        return 0
+
+
+def stages():
+    """Steps from sequence.txt as (kind, label, short, title, state); state is done, run or wait."""
+    out, prev, running = [], 0, False
+    for ln in read("sequence.txt"):
+        m = re.match(r"(bench|kv) (\S+) (\S+) \| (.+)", ln)
+        if not m:
+            continue
+        kind, label, short, title = m.groups()
+        f = f"{label}.csv" if kind == "bench" else f"kvmatrix-{label}.csv"
+        done = len(read(f)) >= 8 if kind == "bench" else mtime(f) > prev
+        state = "done" if done else ("wait" if running else "run")
+        running = running or not done
+        prev = max(prev, mtime(f)) if done else prev
+        out.append((kind, label, short, title, state))
+    return out
+
+
+KIND = {"bench": "Speed test", "kv": "Long-context test"}
+WHERE = {"99": "all on GPU", "0": "CPU only"}
+
+
+def bench_rows(label):
+    out = {}
+    for r in csv.reader(read(label + ".csv")):
+        try:
+            name = re.split(r"[-.][Qq]\d", os.path.basename(r[5]))[0][:20].rstrip("-")
+            out[(f"{name}, {WHERE.get(r[17], r[17] + ' layers on GPU')}", "pp" if int(r[-8]) else "tg")] = float(r[-2])
+        except (ValueError, IndexError):
+            continue
+    return out
+
+
+def render_steps(st, kv_done):
+    mark = {"done": f"{G}\u2714{X}", "run": f"{Y}\u25b6{X}", "wait": f"{D}.{X}"}
+    now = next((i for i, s in enumerate(st, 1) if s[4] == "run"), None)
+    L = [f"  {B}STEPS{X}  {D}" + (f"step {now} of {len(st)}" if now else "all finished") + X, ""]
+    for i, (kind, label, short, title, state) in enumerate(st, 1):
+        prog = ""
+        if state == "run":
+            prog = f"   {Y}{len(read(label + '.csv'))} of 8 runs done{X}" if kind == "bench" else f"   {Y}{kv_done} of 6 rows done{X}"
+        text = f"{KIND[kind]:<18}{title}"
+        took = phase_secs(f"{label}.log" if kind == "bench" else f"kvmatrix-{label}.log") if state == "done" else None
+        prog = prog or (f"   {D}took {dur(took)}{X}" if took is not None else "")
+        L.append(f"  {mark[state]} {i}  " + (f"{B}{text}{X}" if state == "run" else (text if state == "done" else f"{D}{text}{X}")) + prog)
+    return L + [""]
+
+
+def render_bench(st):
+    cols = [(s[2], bench_rows(s[1])) for s in st if s[0] == "bench" and read(s[1] + ".csv")]
+    if not cols:
+        return []
+    keys = []
+    for _, rows in cols:
+        for k in rows:
+            if k[0] not in keys:
+                keys.append(k[0])
+    L = [f"  {B}SPEED TEST RESULTS{X}  {D}tokens/sec, higher is better{X}", ""]
+    for t, name in (("pp", "Reading a 512-token prompt"), ("tg", "Writing a 128-token answer")):
+        L.append(f"  {B}{name:<44}" + "".join(f"{c:>{W}}" for c, _ in cols) + X)
+        for k in keys:
+            L.append(f"  {k:<44}" + "".join(cell(rows.get((k, t)), False) for _, rows in cols))
+        L.append("")
+    logs = [read(s[1] + ".log") for s in st if s[0] == "bench" and s[4] != "wait"]
+    return L + (render_timing([l for l in logs if l][-1]) if any(logs) else [])
+
+
+def gpu_panel(ram="-"):
+    g = gpu()
+    L = [f"  {B}GPU LIVE{X}"]
+    if g:
+        HIST.append(g[0]); del HIST[:-40]
+        used, tot = g[2], g[3]
+        spark = "".join(SPARK[min(8, int(u / 100 * 8.99))] for u in HIST)
+        L += [f"  Video memory  {bar(used / tot, 24, heat(used / tot, .7, .9))} {B}{used:.0f}{X} / {tot:.0f} MiB",
+              f"  GPU busy      {bar(g[0] / 100, 24, heat(g[0], 101, 101))} {B}{g[0]:.0f}%{X}   {D}history{X} {C}{spark}{X}",
+              f"  Memory busy   {bar(g[1] / 100, 24)} {B}{g[1]:.0f}%{X}",
+              f"  Power         {bar(g[5] / max(g[6], 1), 24, heat(g[5] / max(g[6], 1), .8, .95))} {B}{g[5]:.0f}{X} / {g[6]:.0f} W",
+              f"  Temperature   {heat(g[4], 70, 83)}{g[4]:.0f} °C{X}      Fan {g[12]:.0f}%      Core clock {B}{g[7]:.0f}{X}/{g[8]:.0f} MHz      Mem clock {g[9]:.0f} MHz",
+              f"  PCIe link     Gen{g[10]:.0f} x{g[11]:.0f}      {D}System RAM free:{X} {B}{ram} MB{X}"]
+    else:
+        L.append("  (nvidia-smi unavailable)")
+    return L
+
+
+def render(stem="kvmatrix", st=()):
+    log = read(stem + ".log")
+    res = results(stem)
+    cur, done, failed, vram, ram, peak = status(log)
+    finished = any("ALLDONE" in l for l in log)
+    n = len(done)
+    stamps = [l[:8] for l in log if re.match(r"\d\d:\d\d:\d\d (START|DONE)", l)]
+    el = eta = ""
+    if stamps:
+        e = (secs(time.strftime("%H:%M:%S")) - secs(stamps[0])) % 86400
+        el = f"{e // 60}m{e % 60:02d}s"
+        if n and not finished:
+            r = e / n * (6 - n)
+            eta = f"   ~{int(r // 60)}m left"
+    L = [f"{B}  KV-CACHE BENCHMARK{X}  {D}DeepSeek-R1 7B Q4_K_S  ·  GTX 1660 Ti 6GB  ·  Ryzen 5 7600X{X}", ""]
+    live = next((x for x in st if x[4] == "run"), None)
+    if st and stem == "kvmatrix":
+        if not (live and live[0] == "kv" and mtime("kvmatrix.log") > max([mtime(f"{x[1]}.csv" if x[0] == "bench" else f"kvmatrix-{x[1]}.csv") for x in st if x[4] == "done"] or [0])):
+            log, res, cur, done, failed, peak, finished, n, el, eta = [], {}, None, set(), set(), {}, False, 0, "", ""
+        L += render_steps(st, n)
+    state = f"{G}✔ ALL DONE{X}" if finished else (f"{Y}● running: {cur[0]} KV in {'RAM' if cur[1] else 'GPU'}{X}" if cur else "starting…")
+    if not st:
+        L += [f"  Progress  {bar(n / 6, 30)} {B}{n}/6{X}  {state}", f"  Elapsed   {el}{eta}", ""]
+    L += gpu_panel(ram)
+    L.append("")
+    if st and not (live and live[0] == "kv") and stem == "kvmatrix":
+        return "\n".join(L + render_bench(st) + [f"  {D}Ctrl+C closes this view; the benchmark keeps running.{X}"])
+    L += [f"  {B}RESULTS{X}  {D}tokens/sec, higher is better. pp = reading prompt, tg = writing answer, @Nk = N thousand tokens already in context{X}", ""]
+    # one column spec shared by header, rule and rows => identical widths
+    C1, C2, C3 = 9, 7, 11  # KV type, Cache in, Peak VRAM
+    def line(c1, c2, nums, c3, mark=" "):
+        return f" {mark}{c1:<{C1}}{c2:<{C2}}|" + "".join(nums) + f" | {c3:<{C3}}"
+    hdr = line("KV type", "Cache", [f"{t}@{d // 1024}k".rjust(W) for t in ("pp", "tg") for d in DEPTHS], "Peak VRAM")
+    L += [f"{B}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
+    for kv, nk in CONFIGS:
+        bad = (kv, nk) in failed
+        m = f"{Y}▶{X}" if cur == (kv, nk) and not finished else " "
+        nums = [cell(res.get((kv, nk, t, d)), bad) for t in ("pp", "tg") for d in DEPTHS]
+        pk = f"{peak[(kv, nk)]:.0f} MiB" if (kv, nk) in peak else "-"
+        L.append(line(kv, "RAM" if nk else "GPU", nums, pk, m))
+    L += [""] + render_timing(log)
+    L += [f"  {D}. = not run yet   FAIL = out of memory   Ctrl+C closes this view; the benchmark keeps running.{X}"]
+    return "\n".join(L)
+
+
+if __name__ == "__main__":
+    once = "--once" in sys.argv
+    saved = [a for a in sys.argv[1:] if not a.startswith("-")]
+    stem = f"kvmatrix-{saved[0]}" if saved else "kvmatrix"
+    try:
+        while True:
+            st = stages()
+            sys.stdout.write("\033[H\033[J" + render(stem, st) + "\n" if not once else render(stem, st) + "\n")
+            sys.stdout.flush()
+            if once or saved or (all(x[4] == "done" for x in st) if st else any("ALLDONE" in l for l in read("kvmatrix.log"))):
+                break
+            time.sleep(2)
+    except KeyboardInterrupt:
+        pass

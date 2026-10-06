@@ -1,0 +1,5 @@
+title: f16 KV on GPU, single-token decode: which attention kernel is fastest without tensor cores  (R1 7B Q4_K_S)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -t 6 -fa 1 -ctk f16 -ctv f16 -nkvo 0 -d 0,8192,14336 -p 0 -n 48 -ub 128 -r 3
+tile kernel (fix, as is) | build-exp | |
+vector kernel | build-exp | GGML_CUDA_FA_FORCE_B1=v |
+tensor-core kernel (old) | build-exp | GGML_CUDA_FORCE_TURING_MMA=1 |

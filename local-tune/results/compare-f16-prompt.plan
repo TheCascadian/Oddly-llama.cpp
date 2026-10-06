@@ -1,0 +1,6 @@
+title: f16 KV on GPU, 512-token prompt batches: tile kernel with and without its temporary buffer  (R1 7B Q4_K_S)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -t 6 -fa 1 -ctk f16 -ctv f16 -nkvo 0 -d 0,4096,8192 -p 512 -n 0 -r 5
+tile, 2 parallel blocks (fix) | build-exp | |
+tile, 1 block, no temp buffer | build-exp | GGML_CUDA_FA_PB1=1 |
+tile, 2 parallel blocks again | build-exp | |
+tile, 1 block again | build-exp | GGML_CUDA_FA_PB1=1 |
