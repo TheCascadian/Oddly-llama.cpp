@@ -1,0 +1,16 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+graphs on (default),complete,0,1600,345.21,0,0,63a59d08
+graphs on (default),complete,1,1600,345.49,0,0,63a59d08
+graphs on (default),complete,2,1600,345.51,0,0,1e2363cd
+GRAPH_OPT,complete,0,1600,343.67,0,0,0c2304ae
+GRAPH_OPT,complete,1,1600,343.16,0,0,63a59d08
+GRAPH_OPT,complete,2,1600,344.24,0,0,63a59d08
+ngram-simple,complete,0,1600,401.28,562,392,b6b8a0da
+ngram-simple,complete,1,1600,385.70,1028,420,63a59d08
+ngram-simple,complete,2,1600,387.53,1028,420,63a59d08
+graphs on again,complete,0,1600,343.91,0,0,63a59d08
+graphs on again,complete,1,1600,343.49,0,0,63a59d08
+graphs on again,complete,2,1600,344.26,0,0,63a59d08
+GRAPH_OPT again,complete,0,1600,343.91,0,0,63a59d08
+GRAPH_OPT again,complete,1,1600,343.13,0,0,63a59d08
+GRAPH_OPT again,complete,2,1600,342.51,0,0,59a5081a

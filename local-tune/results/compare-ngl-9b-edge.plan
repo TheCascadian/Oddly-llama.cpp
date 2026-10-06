@@ -1,0 +1,8 @@
+title: highest GPU layer count that still fits at 16K context, q8_0 KV  (Qwythos 9B Q4_K_M)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -t 6 -fa 1 -ctk q8_0 -ctv q8_0 -d 0,15360 -p 512 -n 32 -r 3
+ngl 26 | build-live | | -ngl 26
+ngl 27 | build-live | | -ngl 27
+ngl 28 | build-live | | -ngl 28
+ngl 29 | build-live | | -ngl 29
+ngl 26 again | build-live | | -ngl 26
+ngl 27 again | build-live | | -ngl 27

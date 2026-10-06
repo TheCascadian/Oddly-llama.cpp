@@ -1,0 +1,64 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,edit,0,400,86.54,0,0,306c5dc9
+none,edit,1,400,86.58,0,0,306c5dc9
+none,edit,2,400,86.55,0,0,306c5dc9
+none,refactor,0,400,86.57,0,0,4147f668
+none,refactor,1,400,86.40,0,0,4147f668
+none,refactor,2,400,86.62,0,0,4147f668
+none,free,0,400,88.38,0,0,fd84206d
+none,free,1,400,88.44,0,0,fd84206d
+none,free,2,400,88.43,0,0,fd84206d
+ngram-simple,edit,0,400,271.97,389,321,306c5dc9
+ngram-simple,edit,1,400,273.67,389,321,306c5dc9
+ngram-simple,edit,2,400,274.14,389,321,306c5dc9
+ngram-simple,refactor,0,400,255.04,349,307,4147f668
+ngram-simple,refactor,1,400,254.64,349,307,4147f668
+ngram-simple,refactor,2,400,255.13,349,307,4147f668
+ngram-simple,free,0,400,88.19,0,0,fd84206d
+ngram-simple,free,1,400,88.28,0,0,fd84206d
+ngram-simple,free,2,400,88.23,0,0,fd84206d
+draft n-max 3 (default),edit,0,400,109.24,307,296,306c5dc9
+draft n-max 3 (default),edit,1,400,109.24,307,296,306c5dc9
+draft n-max 3 (default),edit,2,400,109.25,307,296,306c5dc9
+draft n-max 3 (default),refactor,0,400,102.33,329,289,4147f668
+draft n-max 3 (default),refactor,1,400,102.23,329,289,4147f668
+draft n-max 3 (default),refactor,2,400,102.54,329,289,4147f668
+draft n-max 3 (default),free,0,400,68.05,501,231,766c8243
+draft n-max 3 (default),free,1,400,68.14,501,231,766c8243
+draft n-max 3 (default),free,2,400,68.15,501,231,766c8243
+draft n-max 8,edit,0,400,121.08,365,353,f7de2937
+draft n-max 8,edit,1,400,120.97,365,353,f7de2937
+draft n-max 8,edit,2,400,121.09,365,353,f7de2937
+draft n-max 8,refactor,0,400,98.33,450,342,4147f668
+draft n-max 8,refactor,1,400,98.28,450,342,4147f668
+draft n-max 8,refactor,2,400,98.41,450,342,4147f668
+draft n-max 8,free,0,400,38.73,1168,251,4e9f5fba
+draft n-max 8,free,1,400,38.71,1168,251,4e9f5fba
+draft n-max 8,free,2,400,38.69,1168,251,4e9f5fba
+draft n-max 16,edit,0,400,132.05,449,370,306c5dc9
+draft n-max 16,edit,1,400,132.57,449,370,306c5dc9
+draft n-max 16,edit,2,400,132.24,449,370,306c5dc9
+draft n-max 16,refactor,0,400,105.11,567,363,f7ad11dc
+draft n-max 16,refactor,1,400,105.11,567,363,f7ad11dc
+draft n-max 16,refactor,2,400,105.14,567,363,f7ad11dc
+draft n-max 16,free,0,400,28.36,2167,262,5c445bbe
+draft n-max 16,free,1,400,28.35,2167,262,5c445bbe
+draft n-max 16,free,2,400,28.33,2167,262,5c445bbe
+draft n-max 16 p-min 0.75,edit,0,400,143.70,393,368,306c5dc9
+draft n-max 16 p-min 0.75,edit,1,400,143.91,393,368,306c5dc9
+draft n-max 16 p-min 0.75,edit,2,400,144.07,393,368,306c5dc9
+draft n-max 16 p-min 0.75,refactor,0,400,126.13,423,358,4147f668
+draft n-max 16 p-min 0.75,refactor,1,400,126.20,423,358,4147f668
+draft n-max 16 p-min 0.75,refactor,2,400,126.31,423,358,4147f668
+draft n-max 16 p-min 0.75,free,0,400,72.40,187,165,14885111
+draft n-max 16 p-min 0.75,free,1,400,72.38,187,165,14885111
+draft n-max 16 p-min 0.75,free,2,400,72.50,187,165,14885111
+ngram-simple + draft 16,edit,0,400,273.81,485,380,306c5dc9
+ngram-simple + draft 16,edit,1,400,279.43,485,380,306c5dc9
+ngram-simple + draft 16,edit,2,400,279.16,485,380,306c5dc9
+ngram-simple + draft 16,refactor,0,400,214.74,487,370,4147f668
+ngram-simple + draft 16,refactor,1,400,214.61,487,370,4147f668
+ngram-simple + draft 16,refactor,2,400,214.22,487,370,4147f668
+ngram-simple + draft 16,free,0,400,72.31,187,165,14885111
+ngram-simple + draft 16,free,1,400,72.32,187,165,14885111
+ngram-simple + draft 16,free,2,400,72.37,187,165,14885111

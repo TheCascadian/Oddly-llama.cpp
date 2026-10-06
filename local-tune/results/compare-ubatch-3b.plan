@@ -1,0 +1,8 @@
+title: ubatch size for a 2048-token prompt  (qwen2.5 3B Q5_K_M, all on GPU)
+args: -m /home/wrekt/odysseus-local/models/qwen2.5-3b-instruct-q5_k_m.gguf -ngl 99 -ctk q8_0 -ctv q8_0 -t 6 -fa 1 -d 0 -p 2048 -n 0 -b 2048 -r 3
+ub 512 (default) | build-live | | -ub 512
+ub 1024 | build-live | | -ub 1024
+ub 2048 | build-live | | -ub 2048
+ub 512 again | build-live | | -ub 512
+ub 1024 again | build-live | | -ub 1024
+ub 2048 again | build-live | | -ub 2048

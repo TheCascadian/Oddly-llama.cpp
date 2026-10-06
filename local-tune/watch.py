@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Live dashboard for local-tune/kvmatrix.sh. Read-only; run: local-tune/watch.py
+"""Live dashboard for the local-tune runners. Read-only; run: local-tune/watch.py
+Without a label it follows the newest run: kvmatrix.sh, compare.py or spectest.py.
 With results/sequence.txt (lines: "bench|kv <label> <title>") it also shows every stage of a queued run.
-local-tune/watch.py <label> shows the saved KV table of a finished stage."""
+local-tune/watch.py <label> shows a saved run: a compare plan, a spectest label or the KV table of a finished stage."""
 import csv, os, re, sys, time
 
 R = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
@@ -268,14 +269,39 @@ def render(stem="kvmatrix", st=()):
     return "\n".join(L)
 
 
+def newest():
+    """(kind, name) of the run whose files changed last; kind is kv, compare or spec."""
+    best = ("kv", None, max(mtime("kvmatrix.log"), mtime("kvmatrix.csv")))
+    for f in os.listdir(R):
+        # spec logs are named per variant, so only the csv gives the label
+        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$", f)
+        if m and mtime(f) > best[2]:
+            best = ("compare" if m[1] else "spec", m[1] or m[2], mtime(f))
+    return best[:2]
+
+
+def other_view(kind, name):
+    import compare, spectest
+    return compare.render(name) if kind == "compare" else spectest.render(name)
+
+
 if __name__ == "__main__":
     once = "--once" in sys.argv
     saved = [a for a in sys.argv[1:] if not a.startswith("-")]
     stem = f"kvmatrix-{saved[0]}" if saved else "kvmatrix"
+    clear = "" if once else "\033[H\033[J"
     try:
         while True:
+            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv")) if mtime(f)), ("kv", None))
+            if kind != "kv":
+                # stays open after a run ends, so it moves on to the next run when one starts
+                sys.stdout.write(clear + other_view(kind, name)[0] + "\n"); sys.stdout.flush()
+                if once or saved:
+                    break
+                time.sleep(2)
+                continue
             st = stages()
-            sys.stdout.write("\033[H\033[J" + render(stem, st) + "\n" if not once else render(stem, st) + "\n")
+            sys.stdout.write(clear + render(stem, st) + "\n")
             sys.stdout.flush()
             if once or saved or (all(x[4] == "done" for x in st) if st else any("ALLDONE" in l for l in read("kvmatrix.log"))):
                 break

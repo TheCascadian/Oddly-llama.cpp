@@ -1,0 +1,121 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,rewrite,0,400,86.55,0,0,2a7900d3
+none,rewrite,1,400,86.50,0,0,2a7900d3
+none,rewrite,2,400,86.75,0,0,2a7900d3
+none,edit,0,400,86.71,0,0,306c5dc9
+none,edit,1,400,86.75,0,0,306c5dc9
+none,edit,2,400,86.65,0,0,306c5dc9
+none,refactor,0,400,86.76,0,0,4147f668
+none,refactor,1,400,86.60,0,0,4147f668
+none,refactor,2,400,86.65,0,0,4147f668
+none,free,0,400,88.55,0,0,fd84206d
+none,free,1,400,88.35,0,0,fd84206d
+none,free,2,400,88.36,0,0,fd84206d
+simple n12 m48 (default),rewrite,0,400,384.15,377,356,2a7900d3
+simple n12 m48 (default),rewrite,1,400,388.14,377,356,2a7900d3
+simple n12 m48 (default),rewrite,2,400,388.40,377,356,2a7900d3
+simple n12 m48 (default),edit,0,400,273.04,389,321,306c5dc9
+simple n12 m48 (default),edit,1,400,274.55,389,321,306c5dc9
+simple n12 m48 (default),edit,2,400,273.50,389,321,306c5dc9
+simple n12 m48 (default),refactor,0,400,254.58,349,307,4147f668
+simple n12 m48 (default),refactor,1,400,255.34,349,307,4147f668
+simple n12 m48 (default),refactor,2,400,254.04,349,307,4147f668
+simple n12 m48 (default),free,0,400,88.41,0,0,fd84206d
+simple n12 m48 (default),free,1,400,88.40,0,0,fd84206d
+simple n12 m48 (default),free,2,400,88.41,0,0,fd84206d
+simple n6 m48,rewrite,0,400,479.39,383,374,2a7900d3
+simple n6 m48,rewrite,1,400,486.52,383,374,2a7900d3
+simple n6 m48,rewrite,2,400,485.90,383,374,2a7900d3
+simple n6 m48,edit,0,400,301.54,499,347,306c5dc9
+simple n6 m48,edit,1,400,302.40,499,347,306c5dc9
+simple n6 m48,edit,2,400,301.04,499,347,306c5dc9
+simple n6 m48,refactor,0,400,285.03,363,324,4147f668
+simple n6 m48,refactor,1,400,285.13,363,324,4147f668
+simple n6 m48,refactor,2,400,283.97,363,324,4147f668
+simple n6 m48,free,0,400,85.15,144,2,d9937314
+simple n6 m48,free,1,400,82.68,144,2,d9937314
+simple n6 m48,free,2,400,79.87,144,2,d9937314
+simple n8 m48,rewrite,0,400,441.30,381,368,2a7900d3
+simple n8 m48,rewrite,1,400,447.42,381,368,2a7900d3
+simple n8 m48,rewrite,2,400,443.88,381,368,2a7900d3
+simple n8 m48,edit,0,400,299.60,441,339,306c5dc9
+simple n8 m48,edit,1,400,299.98,441,339,306c5dc9
+simple n8 m48,edit,2,400,298.18,441,339,306c5dc9
+simple n8 m48,refactor,0,400,278.07,353,319,4147f668
+simple n8 m48,refactor,1,400,277.74,353,319,4147f668
+simple n8 m48,refactor,2,400,277.58,353,319,4147f668
+simple n8 m48,free,0,400,86.97,48,0,d151bf98
+simple n8 m48,free,1,400,86.82,48,0,d151bf98
+simple n8 m48,free,2,400,86.86,48,0,d151bf98
+simple n16 m48,rewrite,0,400,341.49,373,344,2a7900d3
+simple n16 m48,rewrite,1,400,344.38,373,344,2a7900d3
+simple n16 m48,rewrite,2,400,344.77,373,344,2a7900d3
+simple n16 m48,edit,0,400,247.03,384,306,306c5dc9
+simple n16 m48,edit,1,400,246.65,384,306,306c5dc9
+simple n16 m48,edit,2,400,247.08,384,306,306c5dc9
+simple n16 m48,refactor,0,400,234.21,345,295,4147f668
+simple n16 m48,refactor,1,400,234.13,345,295,4147f668
+simple n16 m48,refactor,2,400,234.42,345,295,4147f668
+simple n16 m48,free,0,400,88.13,0,0,fd84206d
+simple n16 m48,free,1,400,88.07,0,0,fd84206d
+simple n16 m48,free,2,400,88.15,0,0,fd84206d
+simple n12 m24,rewrite,0,400,321.95,374,348,2a7900d3
+simple n12 m24,rewrite,1,400,325.92,374,348,2a7900d3
+simple n12 m24,rewrite,2,400,324.76,374,348,2a7900d3
+simple n12 m24,edit,0,400,255.35,340,315,306c5dc9
+simple n12 m24,edit,1,400,256.38,340,315,306c5dc9
+simple n12 m24,edit,2,400,255.40,340,315,306c5dc9
+simple n12 m24,refactor,0,400,236.12,323,301,4147f668
+simple n12 m24,refactor,1,400,236.21,323,301,4147f668
+simple n12 m24,refactor,2,400,235.51,323,301,4147f668
+simple n12 m24,free,0,400,88.07,0,0,fd84206d
+simple n12 m24,free,1,400,88.16,0,0,fd84206d
+simple n12 m24,free,2,400,88.19,0,0,fd84206d
+simple n12 m96,rewrite,0,400,384.54,426,359,2a7900d3
+simple n12 m96,rewrite,1,400,393.38,426,359,2a7900d3
+simple n12 m96,rewrite,2,400,392.00,426,359,2a7900d3
+simple n12 m96,edit,0,400,263.41,523,325,306c5dc9
+simple n12 m96,edit,1,400,262.92,523,325,306c5dc9
+simple n12 m96,edit,2,400,263.27,523,325,306c5dc9
+simple n12 m96,refactor,0,400,257.19,398,310,4147f668
+simple n12 m96,refactor,1,400,256.46,398,310,4147f668
+simple n12 m96,refactor,2,400,257.16,398,310,4147f668
+simple n12 m96,free,0,400,88.07,0,0,fd84206d
+simple n12 m96,free,1,400,88.09,0,0,fd84206d
+simple n12 m96,free,2,400,88.08,0,0,fd84206d
+simple n8 m96,rewrite,0,400,443.27,430,371,2a7900d3
+simple n8 m96,rewrite,1,400,451.50,430,371,2a7900d3
+simple n8 m96,rewrite,2,400,454.47,430,371,2a7900d3
+simple n8 m96,edit,0,400,256.92,723,342,306c5dc9
+simple n8 m96,edit,1,400,255.36,723,342,306c5dc9
+simple n8 m96,edit,2,400,256.97,723,342,306c5dc9
+simple n8 m96,refactor,0,400,280.93,402,322,4147f668
+simple n8 m96,refactor,1,400,280.67,402,322,4147f668
+simple n8 m96,refactor,2,400,280.95,402,322,4147f668
+simple n8 m96,free,0,400,86.30,82,0,d151bf98
+simple n8 m96,free,1,400,86.23,82,0,d151bf98
+simple n8 m96,free,2,400,86.19,82,0,d151bf98
+map-k,rewrite,0,400,383.00,377,356,2a7900d3
+map-k,rewrite,1,400,400.59,356,356,2a7900d3
+map-k,rewrite,2,400,400.59,356,356,2a7900d3
+map-k,edit,0,400,86.18,0,0,306c5dc9
+map-k,edit,1,400,86.26,0,0,306c5dc9
+map-k,edit,2,400,86.13,0,0,306c5dc9
+map-k,refactor,0,400,86.35,0,0,4147f668
+map-k,refactor,1,400,86.40,0,0,4147f668
+map-k,refactor,2,400,86.26,0,0,4147f668
+map-k,free,0,400,88.12,0,0,fd84206d
+map-k,free,1,400,88.15,0,0,fd84206d
+map-k,free,2,400,88.20,0,0,fd84206d
+map-k4v,rewrite,0,400,382.40,377,356,2a7900d3
+map-k4v,rewrite,1,400,400.63,356,356,2a7900d3
+map-k4v,rewrite,2,400,400.80,356,356,2a7900d3
+map-k4v,edit,0,400,86.26,0,0,306c5dc9
+map-k4v,edit,1,400,86.28,0,0,306c5dc9
+map-k4v,edit,2,400,86.00,0,0,306c5dc9
+map-k4v,refactor,0,400,86.52,0,0,4147f668
+map-k4v,refactor,1,400,86.41,0,0,4147f668
+map-k4v,refactor,2,400,86.45,0,0,4147f668
+map-k4v,free,0,400,88.26,0,0,fd84206d
+map-k4v,free,1,400,88.20,0,0,fd84206d
+map-k4v,free,2,400,88.21,0,0,fd84206d

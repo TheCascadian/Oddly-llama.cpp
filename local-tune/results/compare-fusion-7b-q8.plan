@@ -1,0 +1,6 @@
+title: CUDA op fusion A/B  (R1 7B Q4_K_S, q8_0 KV on GPU)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -t 6 -fa 1 -ctk q8_0 -ctv q8_0 -nkvo 0 -d 0,8192 -p 512 -n 32 -r 3
+fusion on (default) | build-live | |
+fusion off | build-live | GGML_CUDA_DISABLE_FUSION=1 |
+fusion on again | build-live | |
+fusion off again | build-live | GGML_CUDA_DISABLE_FUSION=1 |

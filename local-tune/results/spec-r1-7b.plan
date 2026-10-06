@@ -1,0 +1,5 @@
+title: speculative decoding on the 7B model, draft model on CPU because it does not fit on the GPU (R1 7B Q4_K_S, all on GPU)
+prompts: edit refactor free
+none |
+ngram-simple | --spec-type ngram-simple
+draft 0.5B on CPU | --spec-type draft-simple -md /home/wrekt/.lmstudio/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q8_0.gguf -ngld 0 --spec-draft-n-max 8 --spec-draft-p-min 0.75

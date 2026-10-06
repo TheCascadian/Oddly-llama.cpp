@@ -1,0 +1,8 @@
+title: CUDA Graphs A/B, q8_0 KV on GPU  (R1 7B Q4_K_S)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -t 6 -fa 1 -ctk q8_0 -ctv q8_0 -nkvo 0 -d 0,8192,16384 -p 512 -n 32 -r 3
+graphs on (current) | build-live | |
+graphs on + GRAPH_OPT | build-live | GGML_CUDA_GRAPH_OPT=1 |
+graphs off | build-nograph | |
+graphs on again | build-live | |
+graphs on + GRAPH_OPT again | build-live | GGML_CUDA_GRAPH_OPT=1 |
+graphs off again | build-nograph | |

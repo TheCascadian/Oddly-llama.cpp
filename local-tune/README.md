@@ -91,8 +91,9 @@ local-tune/build.sh
 local-tune/bench.sh build <label> -t 6                # 4 model/placement rows, pp512 + tg128
 KV_REPS=3 local-tune/kvmatrix.sh build                # KV type x GPU/RAM x 0K/8K/16K
 python3 local-tune/compare.py run f16-confirm         # old vs new back to back, f16 KV (plan names build-base and build-exp)
+python3 local-tune/spectest.py build <label> <model.gguf> <server args>   # llama-server A/B: speculative decoding, env switches, parallel load (variants in results/spec-<label>.plan)
 ```
-Live view in a second terminal: `local-tune/watch.py` for bench and KV matrix, `local-tune/compare.py f16-confirm` for a comparison. Every runner writes a log with `START`, `TEST ... took=Ns`, `DONE ... took=Ns` and `ALLDONE total=Ns` lines, and the view shows a time table per row and context depth.
+Live view in a second terminal: `local-tune/watch.py`. It follows the newest run (KV matrix, comparison or spectest); `local-tune/watch.py <label>` shows a saved one. Every runner writes a log with `START`, `TEST ... took=Ns`, `DONE ... took=Ns` and `ALLDONE total=Ns` lines, and the view shows a time table per row and context depth.
 
 Result files in `local-tune/results/`:
 
@@ -102,6 +103,10 @@ Result files in `local-tune/results/`:
 | `kvmatrix-final-base.csv`, `kvmatrix-final-fix.csv` | KV matrix, old and new build |
 | `compare-f16-confirm.*` | old vs new, f16 KV, two passes each |
 | `compare-f16-decode.*`, `compare-f16-prompt.*` | attention kernel comparison |
+| `compare-graphs-*` | CUDA Graphs on / GRAPH_OPT / off, see TRIALS.md |
+| `compare-ngl-*` | GPU layer count at 16K context, see TRIALS.md |
+| `compare-fusion-*`, `compare-ubatch-*`, `compare-host-*` | switches with no gain, see TRIALS.md |
+| `spec-*` | llama-server tests: speculative decoding and load, see TRIALS.md |
 | `exp*`, `kvmatrix-exp*`, `base1`, `kvmatrix-base1` | earlier experiments kept for reference |
 
 ## Change 2: qwen35 GDN path on CPU layers
@@ -127,6 +132,8 @@ Kept at defaults after measuring: `GGML_CUDA_FORCE_MMQ` (no change, within 1%), 
 ## Runtime defaults (measured)
 - Threads 6 (physical cores); 4/8 equal, 12 slightly worse.
 - `-ub 512`, flash attention on (`-fa on`); smaller ubatch is slower.
-- 9B Q4_K_M: `-ngl 26` is the ceiling at small context (27+ aborts with a CUDA OOM); use `-ngl 22` with `-c 16384 -ctk q8_0 -ctv q8_0`
-  (4.5 GB VRAM used with the desktop running).
+- 9B Q4_K_M with `-c 16384 -ctk q8_0 -ctv q8_0`: `-ngl 25` (24.6 t/s, was 21.3 at `-ngl 22`). `-ngl 27` is the last one that fits, 28 does not.
+- 7B Q4_K_S with the same context: `-ngl 28` (48.2 t/s, was 35.1 at `-ngl 24`). All 29 layers fit but leave 180 MiB.
+- These two assume one display on the 1660 Ti (about 750 MiB of desktop VRAM). Table in TRIALS.md section 2.
+- `--spec-type ngram-simple` on llama-server: 2.2x to 7x writing speed when the answer repeats text from the prompt (code edits), no cost otherwise.
 - Models up to ~3B fully offload (`-ngl 99`).

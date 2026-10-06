@@ -1,0 +1,8 @@
+title: ubatch size for a 2048-token prompt  (Qwythos 9B Q4_K_M, 22 layers on GPU)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 22 -ctk q8_0 -ctv q8_0 -t 6 -fa 1 -d 0 -p 2048 -n 0 -b 2048 -r 3
+ub 512 (default) | build-live | | -ub 512
+ub 1024 | build-live | | -ub 1024
+ub 2048 | build-live | | -ub 2048
+ub 512 again | build-live | | -ub 512
+ub 1024 again | build-live | | -ub 1024
+ub 2048 again | build-live | | -ub 2048

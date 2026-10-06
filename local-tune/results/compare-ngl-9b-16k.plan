@@ -1,0 +1,8 @@
+title: GPU layer count at 16K context, q8_0 KV, after the display move  (Qwythos 9B Q4_K_M)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -t 6 -fa 1 -ctk q8_0 -ctv q8_0 -d 0,15360 -p 512 -n 32 -r 3
+ngl 22 (gateway) | build-live | | -ngl 22
+ngl 23 | build-live | | -ngl 23
+ngl 24 | build-live | | -ngl 24
+ngl 25 | build-live | | -ngl 25
+ngl 26 | build-live | | -ngl 26
+ngl 22 again | build-live | | -ngl 22

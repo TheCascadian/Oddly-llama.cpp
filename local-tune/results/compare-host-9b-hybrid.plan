@@ -1,0 +1,11 @@
+title: CPU-side switches for the hybrid model  (Qwythos 9B Q4_K_M, 22 layers on GPU)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 22 -t 6 -fa 1 -ctk q8_0 -ctv q8_0 -d 0 -p 512 -n 64 -r 3
+baseline | build-live | |
+pinned host register | build-live | GGML_CUDA_REGISTER_HOST=1 |
+poll 100 | build-live | | --poll 100
+poll 0 | build-live | | --poll 0
+prio 2 | build-live | | --prio 2
+one thread per core, strict | build-live | | -C 0x3F --cpu-strict 1
+baseline again | build-live | |
+pinned host register again | build-live | GGML_CUDA_REGISTER_HOST=1 |
+poll 100 again | build-live | | --poll 100

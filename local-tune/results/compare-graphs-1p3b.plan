@@ -1,0 +1,8 @@
+title: CUDA Graphs A/B, small model fully on GPU  (deepseek-coder 1.3B Q8_0)
+args: -m /home/wrekt/odysseus-local/models/deepseek-coder-1.3b-base-Q8_0.gguf -ngl 99 -t 6 -fa 1 -d 0 -p 512 -n 128 -r 3
+graphs on (current) | build-live | |
+graphs on + GRAPH_OPT | build-live | GGML_CUDA_GRAPH_OPT=1 |
+graphs off | build-nograph | |
+graphs on again | build-live | |
+graphs on + GRAPH_OPT again | build-live | GGML_CUDA_GRAPH_OPT=1 |
+graphs off again | build-nograph | |

@@ -1,0 +1,8 @@
+title: ubatch size for a 2048-token prompt  (deepseek-coder 1.3B Q8_0, all on GPU)
+args: -m /home/wrekt/odysseus-local/models/deepseek-coder-1.3b-base-Q8_0.gguf -ngl 99 -t 6 -fa 1 -d 0 -p 2048 -n 0 -b 2048 -r 3
+ub 512 (default) | build-live | | -ub 512
+ub 1024 | build-live | | -ub 1024
+ub 2048 | build-live | | -ub 2048
+ub 512 again | build-live | | -ub 512
+ub 1024 again | build-live | | -ub 1024
+ub 2048 again | build-live | | -ub 2048

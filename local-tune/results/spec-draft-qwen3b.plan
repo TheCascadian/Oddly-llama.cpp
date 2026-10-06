@@ -1,0 +1,9 @@
+title: draft model speculative decoding, 0.5B Q8_0 draft on GPU (qwen2.5-3b Q5_K_M, all on GPU)
+prompts: edit refactor free
+none |
+ngram-simple | --spec-type ngram-simple
+draft n-max 3 (default) | --spec-type draft-simple -md /home/wrekt/.lmstudio/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q8_0.gguf -ngld 99
+draft n-max 8 | --spec-type draft-simple -md /home/wrekt/.lmstudio/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q8_0.gguf -ngld 99 --spec-draft-n-max 8
+draft n-max 16 | --spec-type draft-simple -md /home/wrekt/.lmstudio/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q8_0.gguf -ngld 99 --spec-draft-n-max 16
+draft n-max 16 p-min 0.75 | --spec-type draft-simple -md /home/wrekt/.lmstudio/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q8_0.gguf -ngld 99 --spec-draft-n-max 16 --spec-draft-p-min 0.75
+ngram-simple + draft 16 | --spec-type ngram-simple,draft-simple -md /home/wrekt/.lmstudio/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q8_0.gguf -ngld 99 --spec-draft-n-max 16 --spec-draft-p-min 0.75

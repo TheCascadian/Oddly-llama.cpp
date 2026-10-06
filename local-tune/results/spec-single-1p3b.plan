@@ -1,0 +1,8 @@
+title: completion model, one request at a time (deepseek-coder 1.3B Q8_0, all on GPU)
+prompts: complete
+mode: completion
+graphs on (default) |
+GRAPH_OPT | GGML_CUDA_GRAPH_OPT=1
+ngram-simple | --spec-type ngram-simple
+graphs on again |
+GRAPH_OPT again | GGML_CUDA_GRAPH_OPT=1

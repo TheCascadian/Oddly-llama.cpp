@@ -1,0 +1,6 @@
+title: CUDA op fusion A/B  (deepseek-coder 1.3B Q8_0, all on GPU)
+args: -m /home/wrekt/odysseus-local/models/deepseek-coder-1.3b-base-Q8_0.gguf -ngl 99 -t 6 -fa 1 -d 0 -p 512 -n 128 -r 3
+fusion on (default) | build-live | |
+fusion off | build-live | GGML_CUDA_DISABLE_FUSION=1 |
+fusion on again | build-live | |
+fusion off again | build-live | GGML_CUDA_DISABLE_FUSION=1 |

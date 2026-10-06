@@ -1,0 +1,12 @@
+title: ngram speculative decoding types and sizes (qwen2.5-3b Q5_K_M, all on GPU)
+prompts: rewrite edit refactor free
+none |
+simple n12 m48 (default) | --spec-type ngram-simple
+simple n6 m48 | --spec-type ngram-simple --spec-ngram-simple-size-n 6
+simple n8 m48 | --spec-type ngram-simple --spec-ngram-simple-size-n 8
+simple n16 m48 | --spec-type ngram-simple --spec-ngram-simple-size-n 16
+simple n12 m24 | --spec-type ngram-simple --spec-ngram-simple-size-m 24
+simple n12 m96 | --spec-type ngram-simple --spec-ngram-simple-size-m 96
+simple n8 m96 | --spec-type ngram-simple --spec-ngram-simple-size-n 8 --spec-ngram-simple-size-m 96
+map-k | --spec-type ngram-map-k
+map-k4v | --spec-type ngram-map-k4v

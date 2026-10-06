@@ -1,0 +1,4 @@
+title: ngram-simple on code-edit prompts (Qwythos 9B Q4_K_M, 25 layers on GPU)
+prompts: edit refactor
+none |
+ngram-simple | --spec-type ngram-simple

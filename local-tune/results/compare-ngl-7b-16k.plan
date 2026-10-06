@@ -1,0 +1,7 @@
+title: GPU layer count at 16K context, q8_0 KV, after the display move  (R1 7B Q4_K_S)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -t 6 -fa 1 -ctk q8_0 -ctv q8_0 -d 0,8192,15360 -p 512 -n 32 -r 3
+ngl 24 (gateway) | build-live | | -ngl 24
+ngl 26 | build-live | | -ngl 26
+ngl 99 | build-live | | -ngl 99
+ngl 24 again | build-live | | -ngl 24
+ngl 99 again | build-live | | -ngl 99

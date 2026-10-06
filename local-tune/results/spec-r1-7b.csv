@@ -1,0 +1,28 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,edit,0,400,51.58,0,0,8e9bf520
+none,edit,1,400,51.51,0,0,8e9bf520
+none,edit,2,400,51.51,0,0,8e9bf520
+none,refactor,0,400,51.56,0,0,72465f10
+none,refactor,1,400,51.53,0,0,72465f10
+none,refactor,2,400,51.52,0,0,72465f10
+none,free,0,400,52.69,0,0,800fb04f
+none,free,1,400,52.62,0,0,800fb04f
+none,free,2,400,52.70,0,0,800fb04f
+ngram-simple,edit,0,400,51.47,0,0,8e9bf520
+ngram-simple,edit,1,400,51.39,0,0,8e9bf520
+ngram-simple,edit,2,400,51.40,0,0,8e9bf520
+ngram-simple,refactor,0,400,53.27,175,34,44bda174
+ngram-simple,refactor,1,400,53.33,175,34,44bda174
+ngram-simple,refactor,2,400,53.30,175,34,44bda174
+ngram-simple,free,0,400,52.62,0,0,800fb04f
+ngram-simple,free,1,400,52.61,0,0,800fb04f
+ngram-simple,free,2,400,52.60,0,0,800fb04f
+draft 0.5B on CPU,edit,0,400,51.47,0,0,8e9bf520
+draft 0.5B on CPU,edit,1,400,51.51,0,0,8e9bf520
+draft 0.5B on CPU,edit,2,400,51.45,0,0,8e9bf520
+draft 0.5B on CPU,refactor,0,400,51.51,0,0,72465f10
+draft 0.5B on CPU,refactor,1,400,51.49,0,0,72465f10
+draft 0.5B on CPU,refactor,2,400,51.44,0,0,72465f10
+draft 0.5B on CPU,free,0,400,52.60,0,0,800fb04f
+draft 0.5B on CPU,free,1,400,52.52,0,0,800fb04f
+draft 0.5B on CPU,free,2,400,52.27,0,0,800fb04f
