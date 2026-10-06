@@ -1,12 +1,15 @@
 # Local tuning: Ryzen 5 7600X + GTX 1660 Ti (6 GB), CachyOS
 
-Two code changes live on this branch. Both are measured on this machine only.
+Three code changes live on this branch. All are measured on this machine only.
 Trials that did not ship and ideas not yet measured are in [TRIALS.md](TRIALS.md).
 
 | # | Change | Effect | Commit |
 |---|---|---|---|
 | 1 | CUDA: stop using tensor-core kernels on GTX 16xx | prompt processing 2.9x to 4.2x faster | `a260d811e` |
 | 2 | qwen35: skip fused raw-gate GDN path on CPU layers (x86) | 9B hybrid/CPU decode 20-35% faster | `52b730eb4` |
+| 3 | CUDA: build the q8_0 K / q4_0 V attention pair by default | 7B fits all 29 layers at 16K: writing 11-16% faster | `afbf9a20c` |
+
+Day-to-day workflow: keep `python3 local-tune/lab.py auto` open in a terminal. It reruns the checks that cover a source file when that file changes, and writes the results page again (see "Reproduce").
 
 ## Change 1: GTX 16xx kernel selection
 
@@ -130,6 +133,23 @@ Measured before change 1 (llama-bench, -t 6, pp512 / tg128, t/s). The pp512 valu
 | Qwythos-9B Q4_K_M | ngl 22 hybrid | 153 / 15.6 | 150 / 20.6 | 151 / 20.3 |
 | Qwythos-9B Q4_K_M | CPU | 142 / 7.7 | 139 / 9.4 | 139 / 9.4 |
 
+## Change 3: q8_0 K / q4_0 V attention pair
+`ggml/src/ggml-cuda/fattn.cu`, `CMakeLists.txt`: the vector kernel for K q8_0 with V q4_0 is in the default build. Before, a mixed pair ran attention on the CPU unless the build had `-DGGML_CUDA_FA_ALL_QUANTS=ON`. Other mixed pairs still need that flag.
+
+Why this pair: on the 7B, K needs q8_0 (q4_0 K breaks the model), but V at q4_0 stays inside the perplexity error. V q4_0 frees about 130 MiB at 16K, and that is what lets the last layer go to the GPU.
+
+R1-distill 7B Q4_K_S, `-c 16384`, writing t/s, two passes each (`compare-kvmix-7b-confirm`, `ppl-kv-7b`):
+
+| Setup | 0K | 8K | 15K | Perplexity |
+|---|---|---|---|---|
+| `-ngl 28`, K q8_0 / V q8_0 (before) | 48.2-48.7 | 35.1-35.3 | 28.3-28.4 | 8.181 |
+| `-ngl 99`, K q8_0 / V q4_0 (now) | 53.4-54.0 | 40.2-40.3 | 32.8-32.9 | 8.204 |
+
+- Perplexity error is +/- 0.14; f16 KV gives 8.166. Prompt reading speed is equal.
+- The pair alone is not a speed setting: at the same layer count it only saves memory.
+- No gain on the 9B (its KV is small). Details in TRIALS.md section 2b.
+- After a change to `fattn*.cu`: `lab.py` runs `test-backend-ops -o FLASH_ATTN_EXT`, the perplexity check and the speed comparison (suite `attention`).
+
 ## Setup
 Rebuild: `local-tune/build.sh` (CUDA 13.4 from `/opt/cuda`, gcc 16). Benchmark: `local-tune/bench.sh <build-dir> <label> -t 6`, summarize with `local-tune/summarize.py local-tune/results/<label>.csv`.
 
@@ -141,8 +161,8 @@ Kept at defaults after measuring: `GGML_CUDA_FORCE_MMQ` (no change, within 1%), 
 - Threads 6 (physical cores); 4/8 equal, 12 slightly worse.
 - `-ub 512`, flash attention on (`-fa on`); smaller ubatch is slower.
 - 9B Q4_K_M with `-c 16384 -ctk q8_0 -ctv q8_0`: `-ngl 25` (24.6 t/s, was 21.3 at `-ngl 22`). `-ngl 27` is the last one that fits, 28 does not.
-- 7B Q4_K_S with the same context: `-ngl 28` (48.2 t/s, was 35.1 at `-ngl 24`). With `-ctk q8_0 -ctv q4_0` all 29 layers fit: `-ngl 99`, 53.7 t/s, perplexity equal (TRIALS.md section 2b).
-- Do not use `-ctk q4_0` on the 7B: perplexity goes from 8.2 to above 1500. `-ctv q4_0` is safe.
-- These two assume one display on the 1660 Ti (about 750 MiB of desktop VRAM). Table in TRIALS.md section 2.
+- 7B Q4_K_S with `-c 16384 -ctk q8_0 -ctv q4_0`: `-ngl 99`, all 29 layers (53.7 t/s; was 48.2 at `-ngl 28` with q8_0 / q8_0). This is the gateway setting since 2026-10-06 (change 3).
+- Do not use `-ctk q4_0` on the 7B: perplexity goes from 8.2 to above 1500. `-ctv q4_0` is safe. The q4_0 rows of the KV matrix above are valid as speeds only.
+- These layer counts assume one display on the 1660 Ti (about 750 MiB of desktop VRAM). Table in TRIALS.md section 2.
 - `--spec-type ngram-simple` on llama-server: 2.2x to 7x writing speed when the answer repeats text from the prompt (code edits), no cost otherwise.
 - Models up to ~3B fully offload (`-ngl 99`).

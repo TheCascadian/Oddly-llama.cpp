@@ -160,7 +160,7 @@ Scope: a list of 11 KV ideas, less the ones already rejected. Runner for perplex
 
 | Trial | Outcome | Evidence |
 |---|---|---|
-| K q8 / V q4 on the 7B, all 29 layers | Kept in the code. +11% writing at 0K, +16% at 15K | `compare-kvmix-7b-confirm`, `ppl-kv-7b` |
+| K q8 / V q4 on the 7B, all 29 layers | Applied. +11% writing at 0K, +16% at 15K | `compare-kvmix-7b-confirm`, `ppl-kv-7b` |
 | q4_0 for K on the 7B | Rejected: perplexity 8.17 -> 1534 | `ppl-kv-7b`, `ppl-kq4-check` |
 | Mixed precision as a speed setting | No gain, memory only | `compare-kvmix-7b` |
 | K q8 / V q4 on the 9B | No gain; `-ngl 26` is a candidate with q8/q8 | `ppl-kv-9b`, `compare-kvmix-9b-ngl` |
@@ -170,13 +170,13 @@ R1-distill 7B, writing t/s, two passes each (`compare-kvmix-7b-confirm`):
 
 | Setup | 0K | 8K | 15K | Perplexity |
 |---|---|---|---|---|
-| `-ngl 28`, K q8 / V q8 (gateway today) | 48.2-48.7 | 35.1-35.3 | 28.3-28.4 | 8.181 |
-| `-ngl 99`, K q8 / V q4 | 53.4-54.0 | 40.2-40.3 | 32.8-32.9 | 8.204 |
+| `-ngl 28`, K q8 / V q8 (gateway before) | 48.2-48.7 | 35.1-35.3 | 28.3-28.4 | 8.181 |
+| `-ngl 99`, K q8 / V q4 (gateway now) | 53.4-54.0 | 40.2-40.3 | 32.8-32.9 | 8.204 |
 
 - Perplexity error is +/- 0.14, f16 KV gives 8.166. Prompt reading is equal. `test-backend-ops -o FLASH_ATTN_EXT` passes.
 - `-ngl 99` with q8/q8 failed at 15K in this session; with q8/q4 it ran in all four passes. V q4 frees about 130 MiB at 16K.
 - Code: the q8_0/q4_0 pair is added to the default vector-kernel list (`fattn.cu`, `CMakeLists.txt`). Other mixed pairs still need `-DGGML_CUDA_FA_ALL_QUANTS=ON`.
-- To use it: rebuild `build-live`, then set the 7B line in the gateway `models.conf` to `-ngl 99 ... -ctk q8_0 -ctv q4_0`. Not done by the agent session (not permitted).
+- Applied 2026-10-06: `build-live` is rebuilt and the 7B line in the gateway `models.conf` is `-ngl 99 --parallel 1 -c 16384 -ctk q8_0 -ctv q4_0 -fa on` (old file: `models.conf.bak-kvmix`). The gateway reads the file at start, so it was restarted.
 - K at q4_0 breaks this model on every path: 1534 on the GPU, 4227 on the old build and 4064 with attention on the CPU, against 12.8 for q8/q8 (4 chunks). So it is the format, not a kernel. The q4_0 rows of the README KV matrix are valid as speeds only.
 - The 9B keeps its perplexity with every type (3.716 f16, 3.709 q8/q8, 3.708 q8/q4, 3.725 q4/q4). Its KV is small, so V q4 frees about 40 MiB. `-ngl 26` runs with q8/q8: 25.6 / 22.9 / 21.0 t/s against 24.6 / 20.9 / 18.3 at `-ngl 25`. `-ngl 27` with q8/q4 ran once at 27.3 / 24.1 / 22.2 with 420 MiB left. Not applied: `-ngl 25` was chosen for headroom.
 - `--fit on` picks 25 of 29 layers with its default 1024 MiB margin (34.5 t/s). With `-fitt 512` or `-fitt 256` it picks 29, equal to the fixed count (48.5 against 47.2 t/s).
@@ -227,8 +227,8 @@ Nothing below has been measured here, except where a line says what was checked.
 - Pinned host memory for KV in RAM (plan item 11). Only the `-nkvo 1` rows could gain.
 
 ### Already in place (checked on this machine)
-- `--no-mmproj-offload` for the 9B model, and q8_0 KV for all four LLMs, in the gateway `models.conf`.
-- `--spec-type ngram-simple` for the 9B, 3B and 1.3B models, `-ngl 25` for the 9B and `-ngl 28` for the 7B (section 2).
+- `--no-mmproj-offload` for the 9B model, and q8_0 KV for the 9B, 3B and 1.3B models, in the gateway `models.conf`.
+- `--spec-type ngram-simple` for the 9B, 3B and 1.3B models, `-ngl 25` for the 9B (section 2). The 7B runs `-ngl 99` with K q8_0 / V q4_0 (section 2b); before that `-ngl 28` with q8_0 for both.
 - CPU governor is `performance`.
 - Swap is zram (zstd), no disk swap.
 - Threads pinned to the 6 physical cores by count (`-t 6`); 4, 8 and 12 were measured in the README.
