@@ -402,7 +402,14 @@ ggml_tensor * llama_model_qwen35::graph::build_layer_attn_linear(
     // only where the fused op implements raw gates natively (CPU, Metal, CUDA/ROCm); other
     // backends would fall back to the CPU for the whole op, which costs more than the four launches
     static const bool raw_gates_disable = getenv("GGML_GDN_RAW_GATES_DISABLE") != nullptr;
-    if (!raw_gates_disable && gdn_raw_gates_dev_ok &&
+#if defined(__x86_64__) || defined(_M_X64)
+    // x86 hosts: the fused raw-gate GDN path is 20-35% slower than separate sigmoid/softplus nodes
+    // when the layer runs on the CPU (Ryzen 7600X, Qwen3.5-9B Q4_K_M, hybrid and CPU-only decode)
+    const bool gdn_raw_gates_layer_ok = ggml_backend_dev_type(model.dev_layer(il)) != GGML_BACKEND_DEVICE_TYPE_CPU;
+#else
+    const bool gdn_raw_gates_layer_ok = true;
+#endif
+    if (!raw_gates_disable && gdn_raw_gates_dev_ok && gdn_raw_gates_layer_ok &&
         model.layers[il].ssm_dt && model.layers[il].ssm_dt->type == GGML_TYPE_F32 &&
         model.layers[il].ssm_a  && model.layers[il].ssm_a->type  == GGML_TYPE_F32) {
         gdn_raw_beta    = beta_raw;
