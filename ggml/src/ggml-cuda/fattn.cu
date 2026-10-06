@@ -520,7 +520,8 @@ static best_fattn_kernel ggml_cuda_get_best_fattn_kernel(const int device, const
     if (can_use_vector_kernel) {
         if (!ggml_is_quantized(K->type) && !ggml_is_quantized(V->type)) {
             if (Q->ne[1] == 1) {
-                if (!gqa_opt_applies) {
+                // On Turing without tensor cores the vector kernel is faster than the tile kernel for batch size 1 even with GQA.
+                if (!gqa_opt_applies || cc == GGML_CUDA_CC_TURING_NO_MMA) {
                     return BEST_FATTN_KERNEL_VEC;
                 }
             }

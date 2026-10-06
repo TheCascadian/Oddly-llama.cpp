@@ -3,6 +3,13 @@
 #include "common.cuh"
 #include "cp-async.cuh"
 
+// The MMQ instances are compiled a second time without MMA instructions for Turing GPUs without tensor cores.
+// The functions with external linkage need different names there.
+#ifdef GGML_CUDA_NO_MMA
+#define mul_mat_q_switch_J mul_mat_q_switch_J_no_mma
+#define mul_mat_q_case     mul_mat_q_case_no_mma
+#endif // GGML_CUDA_NO_MMA
+
 #include <climits>
 #include <cstdint>
 
@@ -254,7 +261,7 @@ static __host__ ggml_cuda_mmq_config ggml_cuda_mmq_get_config(const ggml_type ty
     if (blackwell_mma_available(cc)) {
         return ggml_cuda_mmq_get_config_blackwell(type, J, fallback);
     }
-    if (ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA) {
+    if (ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA && cc != GGML_CUDA_CC_TURING_NO_MMA) {
         return ggml_cuda_mmq_get_config_ampere(type, J, fallback);
     }
     return ggml_cuda_mmq_get_config_pascal(type, J, fallback);
@@ -280,7 +287,7 @@ static constexpr __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_config(ggml_t
 #else
     return ggml_cuda_mmq_get_config_blackwell(type, J, fallback);
 #endif
-#elif __CUDA_ARCH__ >= GGML_CUDA_CC_VOLTA
+#elif __CUDA_ARCH__ >= GGML_CUDA_CC_VOLTA && !defined(GGML_CUDA_NO_MMA)
     return ggml_cuda_mmq_get_config_ampere(type, J, fallback);
 #else
     return ggml_cuda_mmq_get_config_pascal(type, J, fallback);
@@ -1702,6 +1709,11 @@ extern DECL_MMQ_CASE(GGML_TYPE_IQ4_XS);
 // -----------------------------------------
 extern DECL_MMQ_CASE(GGML_TYPE_MXFP4);
 extern DECL_MMQ_CASE(GGML_TYPE_NVFP4);
+
+#ifndef GGML_CUDA_NO_MMA
+template <ggml_type type>
+void mul_mat_q_case_no_mma(ggml_backend_cuda_context & ctx, const mmq_args & args, cudaStream_t stream);
+#endif // GGML_CUDA_NO_MMA
 
 // -------------------------------------------------------------------------------------------------------------------------
 

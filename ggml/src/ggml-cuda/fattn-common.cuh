@@ -1174,6 +1174,11 @@ void launch_fattn(
             }
         }
 
+        // On Turing without tensor cores extra parallel blocks do not help once the output tiles fill the GPU, skip the temporary buffers.
+        if (cc == GGML_CUDA_CC_TURING_NO_MMA && ntiles_dst >= blocks_per_wave) {
+            parallel_blocks = 1;
+        }
+
         blocks_num.x = ntiles_x;
         blocks_num.y = parallel_blocks;
         blocks_num.z = ntiles_z_gqa*K->ne[2]*Q->ne[3];

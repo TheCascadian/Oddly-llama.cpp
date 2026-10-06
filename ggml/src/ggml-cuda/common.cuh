@@ -51,6 +51,8 @@
 #define GGML_CUDA_CC_DP4A            610 // minimum compute capability for __dp4a, an intrinsic for byte-wise dot products
 #define GGML_CUDA_CC_VOLTA           700
 #define GGML_CUDA_CC_TURING          750
+// Turing GPUs without tensor cores (GTX 16xx, MX450, MX550) also report 7.5, they are stored with this value instead.
+#define GGML_CUDA_CC_TURING_NO_MMA   751
 #define GGML_CUDA_CC_AMPERE          800
 #define GGML_CUDA_CC_ADA_LOVELACE    890
 #define GGML_CUDA_CC_HOPPER          900
@@ -275,15 +277,15 @@ static const char * cu_get_error_str(CUresult err) {
 #define VOLTA_MMA_AVAILABLE
 #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ == GGML_CUDA_CC_VOLTA
 
-#if !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_TURING
+#if !defined(GGML_USE_HIP) && !defined(GGML_CUDA_NO_MMA) && __CUDA_ARCH__ >= GGML_CUDA_CC_TURING
 #define TURING_MMA_AVAILABLE
 #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_TURING
 
-#if !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_AMPERE
+#if !defined(GGML_USE_HIP) && !defined(GGML_CUDA_NO_MMA) && __CUDA_ARCH__ >= GGML_CUDA_CC_AMPERE
 #define AMPERE_MMA_AVAILABLE
 #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_AMPERE
 
-#if !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL && __CUDA_ARCH__ < GGML_CUDA_CC_RUBIN
+#if !defined(GGML_USE_HIP) && !defined(GGML_CUDA_NO_MMA) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL && __CUDA_ARCH__ < GGML_CUDA_CC_RUBIN
 #    define BLACKWELL_MMA_AVAILABLE
 #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL
 
@@ -314,7 +316,7 @@ static bool fast_fp16_hardware_available(const int cc) {
 
 // To be used for feature selection of external libraries, e.g. cuBLAS.
 static bool fp16_mma_hardware_available(const int cc) {
-    return (GGML_CUDA_CC_IS_NVIDIA(cc) && cc >= GGML_CUDA_CC_VOLTA) ||
+    return (GGML_CUDA_CC_IS_NVIDIA(cc) && cc >= GGML_CUDA_CC_VOLTA && cc != GGML_CUDA_CC_TURING_NO_MMA) ||
         GGML_CUDA_CC_IS_CDNA(cc) || GGML_CUDA_CC_IS_RDNA3(cc) || GGML_CUDA_CC_IS_RDNA4(cc) ||
         (GGML_CUDA_CC_IS_MTHREADS(cc) && cc >= GGML_CUDA_CC_QY2);
 }
@@ -342,11 +344,12 @@ static bool amd_wmma_available(const int cc) {
 }
 
 static bool volta_mma_available(const int cc) {
-    return GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) == GGML_CUDA_CC_VOLTA;
+    return GGML_CUDA_CC_IS_NVIDIA(cc) && cc != GGML_CUDA_CC_TURING_NO_MMA && ggml_cuda_highest_compiled_arch(cc) == GGML_CUDA_CC_VOLTA;
 }
 
+// The compiled architecture alone is not enough, the device itself must have tensor cores.
 static bool turing_mma_available(const int cc) {
-    return GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_TURING;
+    return GGML_CUDA_CC_IS_NVIDIA(cc) && cc != GGML_CUDA_CC_TURING_NO_MMA && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_TURING;
 }
 
 static bool ampere_mma_available(const int cc) {

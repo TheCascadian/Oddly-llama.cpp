@@ -361,6 +361,13 @@ static ggml_cuda_device_info ggml_cuda_init() {
             turing_devices_without_mma.push_back({ id, device_name });
         }
 
+        // Compute capability 7.5 does not tell whether the device has tensor cores, so mark the devices known to lack them.
+        // GGML_CUDA_FORCE_TURING_MMA restores the old selection that only looks at the compiled architecture.
+        if (!turing_devices_without_mma.empty() && turing_devices_without_mma.back().first == id &&
+                info.devices[id].cc == GGML_CUDA_CC_TURING && getenv("GGML_CUDA_FORCE_TURING_MMA") == nullptr) {
+            info.devices[id].cc = GGML_CUDA_CC_TURING_NO_MMA;
+        }
+
         // Temporary performance fix:
         // Setting device scheduling strategy for iGPUs with cc121 to "spinning" to avoid delays in cuda synchronize calls.
         // TODO: Check for future drivers the default scheduling strategy and
@@ -374,13 +381,13 @@ static ggml_cuda_device_info ggml_cuda_init() {
     }
 
     if (ggml_cuda_highest_compiled_arch(GGML_CUDA_CC_TURING) >= GGML_CUDA_CC_TURING && !turing_devices_without_mma.empty()) {
-        GGML_LOG_INFO("The following devices will have suboptimal performance due to a lack of tensor cores:\n");
+        GGML_LOG_INFO("The following devices lack tensor cores:\n");
         for (size_t device_pos = 0; device_pos < turing_devices_without_mma.size(); device_pos++) {
+            const int id = turing_devices_without_mma[device_pos].first;
             GGML_LOG_INFO(
-                "  Device %d: %s\n", turing_devices_without_mma[device_pos].first, turing_devices_without_mma[device_pos].second.c_str());
+                "  Device %d: %s (%s)\n", id, turing_devices_without_mma[device_pos].second.c_str(),
+                info.devices[id].cc == GGML_CUDA_CC_TURING_NO_MMA ? "using kernels without tensor core instructions" : "tensor core kernels forced");
         }
-        GGML_LOG_INFO(
-            "Consider compiling with CMAKE_CUDA_ARCHITECTURES=61-virtual;80-virtual and DGGML_CUDA_FORCE_MMQ to force the use of the Pascal code for Turing.\n");
     }
 
     for (int id = 0; id < info.device_count; ++id) {
