@@ -239,7 +239,7 @@ def bar(lab, c, cls='b1', ref=False, fail='does not fit'):
     return dict(cls=cls, n='', name=lab, lab=lab, v=c['v'] if c else None, sd=c['sd'] if c else None, reps=3, ref=ref, showDelta=not ref, fail=fail)
 def pick(lab, old, new): return 'b2' if lab == old else 'final' if lab == new else 'b1'
 
-def ngl_panels(files, short, old, new, depths):
+def ngl_panels(files, short, old, new, depths, newlab=', now'):
     data = {}; peak = {}
     for f in files:
         for (lab, pp, d), c in cmp_avg(f).items():
@@ -250,14 +250,14 @@ def ngl_panels(files, short, old, new, depths):
             peak[n] = max(peak.get(n, 0), v)
     cell = lambda n, pp, d: (lambda cs: dict(v=st.mean(c['v'] for c in cs), sd=st.mean(c['sd'] for c in cs)) if cs else None)(data.get((n, pp, d)))
     ns = sorted({k[0] for k in data}, key=int)
-    name = lambda n: ('all layers' if n == '99' else f'{n} layers') + (', before' if n == old else ', now' if n == new else '')
+    name = lambda n: ('all layers' if n == '99' else f'{n} layers') + (', before' if n == old else newlab if n == new else '')
     P = [dict(title=f'{short}, writing speed by layers on the GPU', unit='tokens/sec', labels=True,
         groups=[dict(label=dl(d) if d != 15360 else '15 thousand tokens in context', bars=[bar(name(n), cell(n, False, d), pick(n, old, new), n == old) for n in ns]) for d in depths])]
     P.append(dict(title=f'{short}, peak video memory in the run', unit='MiB, desktop included', labels=True, mark=5750, markLabel='contexts fail above about 5750',
         groups=[dict(label='', bars=[dict(cls=pick(n, old, new), n='', name=name(n), lab=name(n), v=peak[n] if cell(n, False, 15360) else None, sd=None, reps=1, fail='does not fit at 16K') for n in ns])]))
     return P, cell
 ngl9, c9 = ngl_panels(['ngl-9b-16k', 'ngl-9b-edge'], 'Qwythos 9B', '22', '25', (0, 15360))
-ngl7, c7 = ngl_panels(['ngl-7b-16k', 'ngl-7b-edge'], 'R1-distill 7B', '24', '28', (0, 15360))
+ngl7, c7 = ngl_panels(['ngl-7b-16k', 'ngl-7b-edge'], 'R1-distill 7B', '24', '28', (0, 15360), ', picked for q8/q8')
 
 PROMPT = {'rewrite': 'copy a file with one rename', 'edit': 'change one function, print the file', 'refactor': 'add type hints to every function', 'free': 'open question, nothing to copy', 'complete': 'continue a code file'}
 def spec_panel(title, label, variants, prompts=None, foot=None, groups=None):
@@ -326,9 +326,9 @@ M9 = 'kvmix-9b-ngl'
 DEC = [
  ('yes', 'Shipped', 'Plain kernels on GTX 16xx, the card has no tensor cores', tiles[0]['v'], 'faster prompt reading; writing unchanged', 'commit a260d811e', 'fix'),
  ('yes', 'Shipped', 'Qwythos 9B: skip the fused gate path on CPU layers', '+20 to 35%', 'writing with layers on the CPU, 15.6 to 20.6 t/s hybrid', 'commit 52b730eb4', None),
- ('yes', 'Applied', 'R1-distill 7B: 28 layers on the GPU, was 24', pct(n7n, n7o), f'writing, {n7o:.1f} to {n7n:.1f} t/s; {pct(c7("28", False, 15360)["v"], c7("24", False, 15360)["v"])} with 15K in context', 'compare-ngl-7b-*', 'layers'),
+ ('yes', 'Applied', 'R1-distill 7B: 28 layers on the GPU, was 24', pct(n7n, n7o), f'writing, {n7o:.1f} to {n7n:.1f} t/s; {pct(c7("28", False, 15360)["v"], c7("24", False, 15360)["v"])} with 15K in context. Since raised to all 29 layers (next row but one)', 'compare-ngl-7b-*', 'layers'),
  ('yes', 'Applied', 'Qwythos 9B: 25 layers on the GPU, was 22', pct(n9n, n9o), f'writing, {n9o:.1f} to {n9n:.1f} t/s; {pct(c9("25", False, 15360)["v"], c9("22", False, 15360)["v"])} with 15K in context', 'compare-ngl-9b-*', 'layers'),
- ('yes', 'In the code', 'R1-distill 7B: all 29 layers on the GPU, with K q8 / V q4 memory', f'{pct(m_new[0], m_old[0])} to {pct(m_new[2], m_old[2])}', f'writing, {m_old[0]:.1f} to {m_new[0]:.1f} t/s empty and {m_old[2]:.1f} to {m_new[2]:.1f} with 15K in context; perplexity {pk["K q8 / V q8 (shipped)"]:.2f} to {pk["K q8 / V q4"]:.2f}, inside the error. The gateway line is not changed yet', 'compare-kvmix-7b-confirm, ppl-kv-7b', None),
+ ('yes', 'Applied', 'R1-distill 7B: all 29 layers on the GPU, with K q8 / V q4 memory', f'{pct(m_new[0], m_old[0])} to {pct(m_new[2], m_old[2])}', f'writing, {m_old[0]:.1f} to {m_new[0]:.1f} t/s empty and {m_old[2]:.1f} to {m_new[2]:.1f} with 15K in context; perplexity {pk["K q8 / V q8 (shipped)"]:.2f} to {pk["K q8 / V q4"]:.2f}, inside the error. build-live is rebuilt and the gateway line is now -ngl 99 --parallel 1 -c 16384 -ctk q8_0 -ctv q4_0 -fa on', 'compare-kvmix-7b-confirm, ppl-kv-7b', None),
  ('yes', 'Applied', 'ngram-simple on the 9B, 3B and 1.3B models', f'{min(gall):.1f}x to {max(gall):.1f}x', 'writing when the answer repeats the prompt (code edits); no cost on open questions, same text', 'spec-tune-qwen3b, spec-edit-qwythos9b', 'ngram'),
  ('same', 'Default kept', 'CUDA Graphs on or off', '0%', 'no difference larger than the gap between two passes of one variant', 'compare-graphs-*', 'switches'),
  ('same', 'Default kept', 'GGML_CUDA_GRAPH_OPT=1', '0%', 'on llama-server; llama-bench showed +2 to 5% on the 1.3B model only', 'spec-single-1p3b, spec-load-1p3b', 'switches'),
@@ -366,11 +366,86 @@ for kind, gname, gdesc in GROUPS:
 ledger = f'<table class="ledger"><thead><tr><th>Verdict</th><th>Decision</th><th>Deciding number</th><th>What it means</th></tr></thead><tbody>{ledger}</tbody></table>'
 counts = [dict(k=g[1], v=sum(d[0] == g[0] for d in DEC), c=g[0]) for g in GROUPS]
 now = [
- dict(k='R1-distill 7B', v=f'{n7n:.1f}', was=f'{n7o:.1f}', d='-ngl 28, was 24', x=None),
+ dict(k='R1-distill 7B', v=f'{m_new[0]:.1f}', was=f'{n7o:.1f}', d='-ngl 99 with -ctk q8_0 -ctv q4_0, was -ngl 24 with q8_0 / q8_0', x=f'{m_new[2]:.1f} t/s with 15K in context, was {c7("24", False, 15360)["v"]:.1f}'),
  dict(k='Qwythos 9B', v=f'{n9n:.1f}', was=f'{n9o:.1f}', d='-ngl 25, was 22, and ngram-simple', x=f'{e9[("ngram-simple", "edit")]["v"]:.0f} t/s on a code edit, was {e9[("none", "edit")]["v"]:.0f}'),
  dict(k='Qwen2.5 3B', v=f'{t3[(DEF, "free")]["v"]:.1f}', was=None, d='ngram-simple', x=f'{t3[(DEF, "edit")]["v"]:.0f} t/s on a code edit, was {t3[("none", "edit")]["v"]:.0f}'),
  dict(k='DeepSeek Coder 1.3B', v=f'{s1[("graphs on (default)", "complete")]["v"]:.0f}', was=None, d='ngram-simple', x=f'{s1[("ngram-simple", "complete")]["v"]:.0f} t/s when the completion repeats code, was {s1[("graphs on (default)", "complete")]["v"]:.0f}'),
 ]
+# plain-language page top: headline figures and one line per experiment, grouped by outcome
+TPS = 'tokens per second'
+heads = [
+ dict(k='Reading your question', v=tiles[0]['v'], u='faster', was=None, d='How fast the PC takes in what you typed. Faster on every model tested.'),
+ dict(k='Writing the answer, main chat model', v=f'{m_new[0]:.1f}', u=TPS, was=f'was {n7o:.1f}', d='The 7B model. More of it now runs on the graphics card.'),
+ dict(k='Writing the answer, largest model', v=f'{n9n:.1f}', u=TPS, was=f'was {n9o:.1f}', d='The 9B model. It does not fit on the card in full, so the gain is smaller.'),
+ dict(k='Editing code you pasted in', v=f'{min(gall):.1f}x to {max(gall):.1f}x', u='faster', was=None, d='When the answer repeats text from the question. No cost on other questions.'),
+]
+ub1 = [cmp_avg(f)[('ub 1024', True, 0)]['v']/cmp_avg(f)[('ub 512 (default)', True, 0)]['v']-1 for f in ('ubatch-1p3b', 'ubatch-3b', 'ubatch-7b-q8')]
+PLAIN = [
+ ('yes', 'Kept', 'In use on this PC today.', [
+  ('Stopped the card from using a feature it does not have.', f'The software took this card for a newer one and ran routines made for hardware it lacks (tensor cores). With the plain routines it reads questions {tiles[0]["v"]} faster. Writing speed is the same. Kept.'),
+  ('A second pass on that fix, for long chats.', f'The first version wrote slower in one setup: a long chat with the chat memory stored at full precision ({kvv("fix1", "f16", 0, 8192, False):.1f} {TPS} against {co:.1f} before). A different routine brought it back to {cn:.1f}. That is the one cost left: about {(1-cn/co)*100:.0f}% slower in that one setup. Kept.'),
+  ('Removed a temporary memory grab.', 'The first version of the fix stopped with "out of memory" in 3 of 6 runs. After this change it stopped in 0 of 9. No speed cost. Kept.'),
+  ('An off switch for the fix.', 'One setting brings the old behaviour back, so before and after can be compared. It works. Kept.'),
+  ('Skipped a slow shortcut on the 9B model.', 'Part of this model runs on the main processor, not on the graphics card. A combined step there was slower than doing the steps one by one. Without it, writing is 20 to 35% faster (15.6 to 20.6 tokens per second). Kept.'),
+  ('Moved one of the two screens off the graphics card.', 'The desktop used about 1 GB of the card\'s 6 GB of memory. Now it uses about 660 to 760 megabytes, so the models have more room. Kept.'),
+  ('More of the 7B model on the graphics card: 28 of its 29 layers, was 24.', f'A model is a stack of layers. A layer on the card runs faster than one on the main processor. Writing went from {n7o:.1f} to {n7n:.1f} {TPS} ({pct(n7n, n7o)}). Kept, then improved by the next item.'),
+  ('All 29 layers of the 7B model on the card.', f'The PC keeps the chat so far in memory, in two halves. Storing one half more compactly frees enough room for the last layer. Writing went from {m_old[0]:.1f} to {m_new[0]:.1f} {TPS} ({pct(m_new[0], m_old[0])}), and {pct(m_new[2], m_old[2])} in a long chat. The quality score stayed inside its error margin. Kept, and live today.'),
+  ('More of the 9B model on the graphics card: 25 layers, was 22.', f'Writing went from {n9o:.1f} to {n9n:.1f} {TPS} ({pct(n9n, n9o)}). Kept.'),
+  ('Let the PC copy text it has already seen (9B, 3B and 1.3B models).', f'When an answer repeats parts of the question, as in a code edit, the PC guesses the repeated text and checks it in one go. Writing is {min(gall):.1f}x to {max(gall):.1f}x faster on code edits, and {s1[("ngram-simple", "complete")]["v"]/s1[("graphs on (default)", "complete")]["v"]:.1f}x on the small code model. No cost on ordinary questions. The answers were word for word the same in almost every test. Kept.'),
+ ]),
+ ('same', 'Tried, no real gain', 'Measured, then left as it was.', [
+  ('A graphics-card feature that bundles work into batches (CUDA Graphs), on and off.', 'No difference larger than the normal wobble between two runs. Left on. The longest-chat part of this test could not run that day for lack of memory.'),
+  ('An extra tuning switch for that feature.', 'In a benchmark the smallest model wrote 2 to 5% faster. The larger models gained nothing, and in real use the gain did not show at all. Left off.'),
+  ('Different sizes and types of the copy shortcut.', 'Shorter matches were 9 to 25% faster on code, but 2 to 7% slower on ordinary questions, and they changed the answers. Two other types only helped on a straight copy. Standard setting kept.'),
+  ('Reading the question in larger chunks.', f'Reading got {min(ub1)*100:.1f} to {max(ub1)*100:.1f}% faster for 70 to 900 megabytes more card memory. The largest chunk size did not fit next to the two bigger models. Standard size kept.'),
+  ('Reading the question in smaller chunks.', 'Slower. Standard size kept.'),
+  ('Four processor-side settings on the 9B model (pinned memory, busy waiting, higher priority, threads tied to cores).', 'All gave 20.5 to 21.3 tokens per second. Two runs with no change at all gave 21.3 and 19.1, so nothing stood out. Left as they were.'),
+  ('Number of processor threads.', '6, one per physical core, stays. 4 and 8 were equal and 12 was slightly worse.'),
+  ('A build option that forces one kind of math routine.', 'No change, within 1%. Left at the default.'),
+  ('Mixes of precision for the two halves of the chat memory, as a speed setting.', 'All four mixes wrote at the same speed. The only gain is memory: about 130 megabytes on the 7B model in a long chat. That memory is what made room for the last layer in the "Kept" list.'),
+  ('The same compact chat memory on the 9B model.', 'Quality was the same, but this model\'s chat memory is small, so it frees only about 40 megabytes. Not applied.'),
+  ('One more layer of the 9B model on the card (26).', f'It works: {mix(M9, "ngl 26, q8/q8", False, 0):.1f} against {mix(M9, "ngl 25, q8/q8 (shipped)", False, 0):.1f} {TPS}. 25 was kept so the desktop has spare memory. A candidate for later.'),
+  ('Letting the software choose how many layers go on the card.', f'With its standard safety margin it picks 25 of 29 layers and is slower ({fit[("fit, default margin 1024 MiB", "free")]["v"]:.1f} {TPS}). With a smaller margin it picks all 29 and matches the hand-set value ({fit[("fit, margin 512 MiB", "free")]["v"]:.1f} against {fit[("all 29 layers, fixed", "free")]["v"]:.1f}). Hand-set value kept. No new code needed.'),
+  ('The copy shortcut on the 7B model, short answers.', 'This model thinks out loud before it answers, so there was nothing to copy. 51.5 against 51.4 tokens per second. No gain.'),
+  ('Two ideas for reading compact chat memory faster.', 'A look at the code showed that both are already in place. Nothing to add.'),
+  ('Checked an early finding that one compact memory format was 19% faster in long chats.', 'It did not repeat. The slow figure (28.2 tokens per second) was a single run. Later runs gave 32.5 to 33.6, level with the other format. The gap was measurement noise.'),
+ ]),
+ ('no', 'Tried, made things worse or did not work', 'Slower, unstable, or the answers changed. Not used.', [
+  ('A different routine for compact chat memory, meant to speed up long chats.', 'Slower or equal in every case (for example 41.7 down to 34.0 tokens per second), and one long-chat case stopped running. Rejected.'),
+  ('That routine together with the card fix.', 'Slower again, and it ran out of memory. Rejected.'),
+  ('A small helper model that writes ahead while the large one checks.', f'On ordinary questions it was {-max(dfree)*100:.0f} to {-min(dfree)*100:.0f}% slower. At best 1.7x faster on code, where the copy shortcut gives about 3x. Both models share one card, so wrong guesses cost more than right ones save. Rejected. The 7B model refuses this helper, and the 9B model has no matching one.'),
+  ('A copy shortcut that also remembers earlier requests.', 'Faster again (up to 5.9x), but the answers were not the same as without it. Rejected.'),
+  ('Switching off a built-in feature that merges small steps.', f'Writing got {-max(fus)*100:.0f} to {-min(fus)*100:.0f}% slower. Reading was equal. Left on.'),
+  ('The most compact format for the other half of the chat memory, on the 7B model.', f'The quality score went from {pk["K f16 / V f16"]:.2f} to {pk["K q4 / V q4"]:.0f}, where lower is better. The answers break. It was the same on the old build and on the main processor, so the format is the cause. Rejected.'),
+  ('The copy shortcut on the 7B model, long answers.', f'{r7[("ngram-simple", "refactor")]["v"]/r7[("none", "refactor")]["v"]:.1f}x to {r7[("ngram-simple", "edit")]["v"]/r7[("none", "edit")]["v"]:.1f}x faster. But in one of two tests the model got stuck repeating its own reasoning and never gave the code. Not applied.'),
+  ('All 29 layers of the 7B model with the original chat memory format.', '11 to 18% faster, but only 180 megabytes of card memory were left and long chats failed to start. Not applied in that form. Solved later with the compact memory in the "Kept" list.'),
+  ('28 or 29 layers of the 9B model on the card.', 'Does not fit together with a long chat.'),
+  ('Chat memory at full precision with a very long chat (16 thousand tokens).', 'Has never fit in the card\'s 6 GB, with any version.'),
+  ('Keeping the chat memory in ordinary RAM instead of on the card.', 'It runs, but long chats are much slower: 13.9 against 32.6 tokens per second. Not used.'),
+ ]),
+ ('nb', 'Looked at, not built', 'Ruled out before any code was written.', [
+  ('A routine that shares memory reads for compact chat memory.', 'It depended on the first item in the list above. That failed, so this was dropped.'),
+  ('High precision for recent words, lower for older ones.', 'One half of the chat memory is already fine at low precision for all words. The other half breaks at low precision at any age. Nothing left to win.'),
+  ('A different long-chat routine (tiled).', 'An earlier test had it slower than the routine in use: 38.6 against 42.2 tokens per second.'),
+  ('Even more compact chat memory formats.', 'No such code exists in this software or in the related project that was checked.'),
+  ('Other kinds of helper models for the 3B, 7B and 1.3B models.', 'Each kind needs a helper trained for the exact model. None is published for these three.'),
+  ('Settings for "mixture of experts" models.', 'Does not apply. None of the models on this PC is of that kind.'),
+  ('Spilling chat memory to RAM or disk in long chats.', 'Left out on purpose. Chat memory off the card is much slower (see above).'),
+  ('A build option for much newer cards.', 'Does not apply to this card. Left off.'),
+ ]),
+ ('open', 'Could not test', 'Each one needs a step by the owner of the PC.', [
+  ('A ready-made helper model for the 9B model.', 'One exists and is downloaded (914 MB). Running this outside file was not permitted in the session.'),
+  ('A rival version of the same software, as a yardstick.', 'Downloaded. Building outside code was not permitted in the session.'),
+  ('Faster RAM settings in the PC\'s setup menu (BIOS).', 'Needs the setup menu and a restart. It would only help the parts that run on the main processor.'),
+  ('Operating system tuning.', 'A list of system settings. They need administrator rights or a restart, and some trade security for speed. None measured.'),
+  ('Moving the second screen off the graphics card.', 'Not done. It would free more card memory.'),
+  ('Running the card\'s memory faster than its rated speed.', 'Not tried. It risks silent errors, so it needs a quality check and not only a speed number.'),
+  ('Two figures from the first review of the code (memory speed, and "15 to 20% headroom").', 'Both are calculations. No measurement supports or contradicts them.'),
+  ('A review of how the chat memory and work space are set aside on the card.', 'Not done.'),
+  ('Research ideas for dropping or shrinking old chat memory, and faster model loading.', 'Not tried. The first have no code here. The second changes start-up time only, not answer speed.'),
+ ]),
+]
+plain = [dict(c=c, name=n, desc=d, items=[dict(w=w, r=r) for w, r in items]) for c, n, d, items in PLAIN]
 try: LAB = json.load(open(R+'lab-state.json'))
 except Exception: LAB = {}
 import time
@@ -385,7 +460,7 @@ for name, sv in LAB.items():
         k2, w2 = LW.get(stt, ('open', stt.capitalize()))
         lab += f'<tr><td class="lp"><span class="pill {k2}">{w2}</span></td><td class="lw">{step}</td><td class="ly" colspan="2">{text or "-"}</td></tr>'
 lab = f'<table class="ledger"><thead><tr><th>Result</th><th>Step</th><th colspan="2">Candidate build against shipped build</th></tr></thead><tbody>{lab}</tbody></table>'
-D.update(lab=lab, ledger=ledger, counts=counts, now=now, ngl=ngl7+ngl9, ngram=ngram, tune=tune, draft=draft, switches=switches)
+D.update(heads=heads, plain=plain, lab=lab, ledger=ledger, counts=counts, now=now, ngl=ngl7+ngl9, ngram=ngram, tune=tune, draft=draft, switches=switches)
 
 out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'ledger.html')
 open(out, 'w').write(open(os.path.join(HERE, 'ledger.template.html')).read().replace('__DATA__', json.dumps(D)))
