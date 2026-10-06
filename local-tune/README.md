@@ -95,6 +95,8 @@ python3 local-tune/spectest.py build <label> <model.gguf> <server args>   # llam
 ```
 Live view in a second terminal: `local-tune/watch.py`. It follows the newest run (KV matrix, comparison or spectest); `local-tune/watch.py <label>` shows a saved one. Every runner writes a log with `START`, `TEST ... took=Ns`, `DONE ... took=Ns` and `ALLDONE total=Ns` lines, and the view shows a time table per row and context depth.
 
+Results page: `python3 local-tune/ledger.py` writes `local-tune/ledger.html` from the files in `results/`. It lists every decision with its verdict and deciding number, then the charts. After a new trial, add one row to `DEC` in `ledger.py` and run it again.
+
 Result files in `local-tune/results/`:
 
 | File | Content |
