@@ -1,6 +1,7 @@
 # Local tuning: Ryzen 5 7600X + GTX 1660 Ti (6 GB), CachyOS
 
-Three code changes live on this branch. All are measured on this machine only.
+Three code changes live on this branch, plus a GPU overclock that is a setting and not code (see "GPU overclock" below). All are measured on this machine only.
+The interactive version of these results is [report.html](report.html); the overview with charts is in the repository [README](../README.md).
 Trials that did not ship and ideas not yet measured are in [TRIALS.md](TRIALS.md).
 
 | # | Change | Effect | Commit |
@@ -149,6 +150,26 @@ R1-distill 7B Q4_K_S, `-c 16384`, writing t/s, two passes each (`compare-kvmix-7
 - The pair alone is not a speed setting: at the same layer count it only saves memory.
 - No gain on the 9B (its KV is small). Details in TRIALS.md section 2b.
 - After a change to `fattn*.cu`: `lab.py` runs `test-backend-ops -o FLASH_ATTN_EXT`, the perplexity check and the speed comparison (suite `attention`).
+
+## GPU overclock (a setting, not a code change)
+
+`gpu-push.py` finds the highest memory and core offsets that stay correct, using the 7B model as the test load. Run it as your normal user; it asks for `sudo` once for the NVML offset calls and `nvidia-smi -pl`.
+
+| Result (7B decode, 4K context) | |
+|---|---|
+| Stock, 100 W | 43.8 t/s |
+| Saved: memory +2300 (6900 MHz), core +105, 120 W | 50.7 t/s (+16%), 14 of 14 soak passes, perplexity 12.8239 |
+
+```sh
+python3 local-tune/gpu-push.py [--resume] [--power 120] [--mem-max 1500] [--mem-step 100] [--core-max 300] [--core-step 15] [--soak 10] [--margin 1]
+python3 local-tune/gpu-push.py apply   # set the saved offsets again, they are lost at reboot
+python3 local-tune/gpu-push.py reset
+```
+
+- A step passes only on a clean exit, no new Xid line, perplexity equal digit for digit, decode not under 93% of the best, and under 83 C.
+- `--resume` applies the saved pair and `--power`, re-verifies it (stepping core, then memory, down if it no longer holds), then only sweeps upward. The state file `results/gpu-oc.json` is written only after the final soak passes; the old one is copied to `gpu-oc.json.<stamp>`. It is per machine and ignored by git.
+- `gpu-tune.sh` is a guided front end for the other system switches (persistence mode, power limit, huge pages). `watch.py` shows the run live.
+- `oc-kit/` holds copies of the scripts and an `AGENT.md` that tells an AI agent what to edit for a different machine. Details and the step tables are in TRIALS.md section 2d.
 
 ## Setup
 Rebuild: `local-tune/build.sh` (CUDA 13.4 from `/opt/cuda`, gcc 16). Benchmark: `local-tune/bench.sh <build-dir> <label> -t 6`, summarize with `local-tune/summarize.py local-tune/results/<label>.csv`.

@@ -1,0 +1,3 @@
+title: Perplexity check after a GPU setting change (R1 7B Q4_K_S, K q8_0 / V q4_0, 4 chunks)
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -f local-tune/results/ppl-corpus.txt -c 4096 -b 512 --chunks 4 -ngl 99 -t 6 -fa on
+K q8 / V q4 | build-live | -ctk q8_0 -ctv q4_0

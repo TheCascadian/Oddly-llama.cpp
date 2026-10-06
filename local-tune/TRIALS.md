@@ -187,6 +187,50 @@ R1-distill 7B, writing t/s, two passes each (`compare-kvmix-7b-confirm`):
   - Turbo4 / Turbo3 and 2-bit KV: no code in this tree. The K result rules out fewer bits for K on the 7B; only V could go lower.
 - Not done: the audit of KV and workspace allocation. One note from the kernel: with GQA the vector kernel reads each K/V head once per query head (7 times on the 7B).
 
+## 2c. Leftover leads, 2026-10-06 (second session)
+
+All on `build-live`, display on the iGPU (desktop 800-890 MiB).
+
+| Trial | Outcome | Evidence |
+|---|---|---|
+| ik_llama.cpp (fdb8e67, built here) as an upper bound | No gain over this tree. Reads a prompt 3.6x slower, writes equal or slower | `ik-probe`, `live-probe` |
+| DFlash draft head for the 9B (`draft-dflash`) | No-go: slower than `ngram-simple` and needs fewer GPU layers | `spec-dflash-9b`, `spec-dflash-9b2` |
+| 9B `-ngl 26` / `27` with q8_0 K / q4_0 V, two passes | `-ngl 26` is stable. `-ngl 27` failed to create the 15K context in one pass. Not applied | `compare-ngl9b-confirm` |
+| `ngram-simple` lookup length on the 7B, 2000 tokens | n=24 gives the same text as no draft on "edit" at 2.2x. Not applied | `spec-r1-7b-long2` |
+
+- ik_llama.cpp, `bench.sh -t 6 -fa 1`, pp512 / tg128 t/s, ik against this tree: 1.3B 844 / 153.6 against 3036 / 152.0, 3B 377 / 85.3 against 1356 / 93.3, 9B ngl 22 153 / 15.2 against 496 / 21.1, 9B CPU 145 / 8.0 against 403 / 8.5. One pass of 3 repetitions each. The ik csv has the test name as last column, so `summarize.py` reads it wrong: use column -3 for t/s.
+- DFlash, 9B, 8K context, q8_0 KV. At `-ngl 20` the draft run ran out of memory. At `-ngl 14`, t/s none -> DFlash with the draft on the CPU: edit 13.7 -> 24.6 (1.8x), refactor 13.7 -> 24.2 (1.8x), free 13.5 -> 14.9 (+10%). With the draft on the GPU it does not fit. At `-ngl 25` the plain model writes 24 t/s and `ngram-simple` reaches 139 (edit, 8K) and 44 (refactor), so DFlash gives nothing a layer count does not.
+- 9B at 16K, writing t/s at 0K / 8K / 15K, two passes. `-ngl 25`: 24.5 / 20.6 / 18.0 and 22.9 / 19.7 / 17.7. `-ngl 26`: 25.1 / 22.9 / 20.8 and 25.6 / 22.8 / 21.1. `-ngl 27`: 27.2 / 22.9 / no result and 26.2 / 23.7 / 21.9. Peak VRAM 5649 / 5671 / 5706 MiB against a limit of about 5750. Prompt reading equal. Perplexity was not repeated (9B is flat across KV types, section 2b).
+- 7B with the gateway setting (`-ngl 99`, K q8_0 / V q4_0), 2000 tokens allowed, t/s and whether the text equals the run without a draft:
+
+| Variant | edit | refactor |
+|---|---|---|
+| none | 50.1 | 51.0 |
+| n=12 (default) | 103.9, text differs | 79.9, differs |
+| n=24 | 110.1, same text (2.2x) | 65.9, differs |
+| n=48 | 103.0, same text | 62.8, differs |
+
+  The answers now finish (759 and 961 tokens), unlike the `-ngl 28` run in section 2. Refactor differs from the baseline in every variant, and nothing here says if it is worse or only different. Not applied.
+- Not run in this session: anything that needs root (governor, THP, persistence mode, power limit, memory clock, kernel parameters) because `sudo` asks for a password. The power limit, memory clock and THP were run later, see section 2d. EXPO / DDR5 is left for the BIOS pass.
+
+## 2d. GPU clocks and power, 2026-10-06 (third session)
+
+Run with `sudo` in the user's session. R1-distill 7B Q4_K_S, `-ngl 99`, K q8_0 / V q4_0, decode at 4K context, `llama-perplexity` on 4 chunks of 4096 tokens (stock value 12.8239). Tool: `gpu-push.py`.
+
+| Trial | Outcome | Evidence |
+|---|---|---|
+| System switches with bench.sh: 100 W power limit, locked GPU clocks, memory offset +250, huge pages | No gain. Nothing beat the stock run; 100 W cost 1-3% | `gpu-base-*`, `gpu-pl100-*`, `gpu-lgc-*`, `gpu-mo250-*`, `gpu-thp-*` |
+| Overclock sweep at a 100 W limit | Saved memory +1400, core +105. Decode 43.8 to 47.5 t/s (+8%) | `gpupush-1006-1250.log` |
+| Overclock resumed at 120 W, upward only | Saved memory +2300, core +105. Decode 50.7 t/s (+16% over stock at 100 W) | `gpupush-1006-1325.log`, `gpu-oc.json` |
+| Full `bench.sh` after the soak (offsets probably still active) | Decode +5% to +14% over the same build before | `full-1006-1356`, `live-probe` |
+
+- 100 W run: memory passed every step to the +1500 cap (real clock 6001 to 6750 MHz; the offset is half the displayed change), so its limit was not found. Core +120 passed and +135 failed on perplexity (12.8248). Saved memory +1400 (one step of margin) and core +105, then 13 soak passes. The power column of this run read 42-48 W because the sampler read after the workload; it was fixed for the second run.
+- 120 W run: the saved pair re-verified at 49.1 and 50.2 t/s (47.5 at 100 W with the same offsets, so about +5% from the power limit). Memory climbed to +2400 (6950 MHz) with no failure, decode 50.2-50.7 t/s. Core +120 passed (50.9), +135 failed again (12.8234). Saved memory +2300 and core +105, then 14 soak passes: 50.4-50.7 t/s, 121-123 W, 73-75 C, perplexity 12.8239 each time. Run time 1252 s.
+- The split between power limit and memory clock is not separable from these runs: at the same offsets the power limit gave about +5%, and memory +1400 to +2300 added about 1 t/s. Single passes; splits under 3% are noise.
+- The 12:29-12:39 system runs are labelled by file name only; I read them as power limit 100 W, locked clocks, memory offset +250 and huge pages.
+- Offsets live in the driver and reset at reboot or on a crash. `gpu-push.py apply` sets the saved pair again. A boot-time systemd unit for it is not set up.
+- Not done: a longer real-workload soak, and a check of the Xid log over days of use.
+
 ## 3. Baseline, with one correction
 
 ### Figures that have saved results
@@ -239,8 +283,8 @@ State today: shmem THP is `never`, the kernel command line has no `mitigations=`
 - EXPO / DDR5 speed and FCLK (plan item 6). Affects CPU layers and KV in RAM only. Not measured: needs the BIOS. After a change, rerun `bench.sh` (9B hybrid and CPU rows) and the `-nkvo 1` rows of `kvmatrix.sh`.
 - C-state limits, IRQ affinity, explicit CPU affinity, SMT off, real-time scheduling.
 - shmem THP, proactive compaction, swappiness, zram against zswap. Huge pages for model and KV memory.
-- GPU persistence mode, power limit.
-- GPU memory clock offset. Risk of silent corruption; any test needs an output check (perplexity or `test-backend-ops`), not only t/s.
+- GPU persistence mode (set by `gpu-push.py`, not measured alone).
+- Power limit and GPU memory and core clock offsets: measured, section 2d. They gave +16% together. Any change needs an output check (perplexity), not only t/s.
 - `mitigations=off` and `amd_iommu=off` kernel parameters. Both trade security or isolation for speed, they are not free.
 - Model loading: mmap against direct I/O, GPUDirect Storage, a separate NVMe for models. Load time only, not t/s.
 

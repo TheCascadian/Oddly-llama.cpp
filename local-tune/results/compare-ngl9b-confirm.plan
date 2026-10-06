@@ -1,0 +1,8 @@
+title: 9B at 16K: -ngl 25 against 26 and 27, q8/q4 KV, two passes
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -t 6 -fa 1 -d 0,8192,15360 -p 512 -n 32 -r 3
+ngl 25 q8/q4 | build-live | | -ngl 25 -ctk q8_0 -ctv q4_0
+ngl 26 q8/q4 | build-live | | -ngl 26 -ctk q8_0 -ctv q4_0
+ngl 27 q8/q4 | build-live | | -ngl 27 -ctk q8_0 -ctv q4_0
+ngl 25 q8/q4 again | build-live | | -ngl 25 -ctk q8_0 -ctv q4_0
+ngl 26 q8/q4 again | build-live | | -ngl 26 -ctk q8_0 -ctv q4_0
+ngl 27 q8/q4 again | build-live | | -ngl 27 -ctk q8_0 -ctv q4_0

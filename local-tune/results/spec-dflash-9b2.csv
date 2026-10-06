@@ -1,0 +1,19 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,edit,0,400,13.74,0,0,01718d5f
+none,edit,1,400,13.48,0,0,01718d5f
+none,edit,2,400,13.82,0,0,01718d5f
+none,refactor,0,400,13.75,0,0,b3038b95
+none,refactor,1,400,13.70,0,0,b3038b95
+none,refactor,2,400,13.71,0,0,b3038b95
+none,free,0,400,13.20,0,0,b96152d7
+none,free,1,400,13.55,0,0,b96152d7
+none,free,2,400,13.61,0,0,b96152d7
+dflash cpu draft,edit,0,400,24.15,304,297,01718d5f
+dflash cpu draft,edit,1,400,24.93,304,297,01718d5f
+dflash cpu draft,edit,2,400,24.75,304,297,01718d5f
+dflash cpu draft,refactor,0,400,24.09,312,295,b3038b95
+dflash cpu draft,refactor,1,400,23.99,312,295,b3038b95
+dflash cpu draft,refactor,2,400,24.53,312,295,b3038b95
+dflash cpu draft,free,0,400,14.83,515,226,f1ad95f5
+dflash cpu draft,free,1,400,14.86,515,226,f1ad95f5
+dflash cpu draft,free,2,400,15.03,515,226,f1ad95f5

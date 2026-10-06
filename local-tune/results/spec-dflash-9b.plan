@@ -1,0 +1,6 @@
+title: DFlash draft head for Qwythos 9B Q4_K_M (-ngl 20, KV q8_0)
+prompts: edit refactor free
+none | -ngl 20
+ngram-simple | -ngl 20 --spec-type ngram-simple
+dflash cpu draft | -ngl 20 --spec-type draft-dflash -md /home/wrekt/.lmstudio/models/EntityDeletr/Qwen3.5-9B-DFlash-GGUF/Qwen3.5-9B-DFlash.gguf -ngld 0
+dflash gpu draft | -ngl 20 --spec-type draft-dflash -md /home/wrekt/.lmstudio/models/EntityDeletr/Qwen3.5-9B-DFlash-GGUF/Qwen3.5-9B-DFlash.gguf -ngld 99

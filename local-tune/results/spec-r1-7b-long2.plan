@@ -1,0 +1,7 @@
+title: ngram-simple lookup length on the 7B with 2000-token answers (R1 7B Q4_K_S, -ngl 99, q8_0 K / q4_0 V, 16K)
+prompts: edit refactor
+n_predict: 2000
+none |
+ngram-simple n12 (default) | --spec-type ngram-simple
+ngram-simple n24 | --spec-type ngram-simple --spec-ngram-simple-size-n 24
+ngram-simple n48 | --spec-type ngram-simple --spec-ngram-simple-size-n 48

@@ -1,0 +1,25 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,edit,0,759,50.71,0,0,816daf0c
+none,edit,1,759,49.25,0,0,816daf0c
+none,edit,2,759,50.42,0,0,816daf0c
+none,refactor,0,961,51.05,0,0,f4212501
+none,refactor,1,961,51.03,0,0,f4212501
+none,refactor,2,961,50.98,0,0,f4212501
+ngram-simple n12 (default),edit,0,809,103.80,515,473,6f8815cd
+ngram-simple n12 (default),edit,1,809,103.98,515,473,6f8815cd
+ngram-simple n12 (default),edit,2,809,103.90,515,473,6f8815cd
+ngram-simple n12 (default),refactor,0,916,79.92,624,406,41ad3fc2
+ngram-simple n12 (default),refactor,1,916,79.87,624,406,41ad3fc2
+ngram-simple n12 (default),refactor,2,916,79.83,624,406,41ad3fc2
+ngram-simple n24,edit,0,759,109.97,480,464,816daf0c
+ngram-simple n24,edit,1,759,110.18,480,464,816daf0c
+ngram-simple n24,edit,2,759,110.25,480,464,816daf0c
+ngram-simple n24,refactor,0,987,65.90,384,274,5c094f01
+ngram-simple n24,refactor,1,987,65.92,384,274,5c094f01
+ngram-simple n24,refactor,2,987,65.93,384,274,5c094f01
+ngram-simple n48,edit,0,759,102.95,480,440,816daf0c
+ngram-simple n48,edit,1,759,102.98,480,440,816daf0c
+ngram-simple n48,edit,2,759,103.14,480,440,816daf0c
+ngram-simple n48,refactor,0,933,63.16,288,218,8ff120c3
+ngram-simple n48,refactor,1,933,62.54,288,218,8ff120c3
+ngram-simple n48,refactor,2,933,62.49,288,218,8ff120c3

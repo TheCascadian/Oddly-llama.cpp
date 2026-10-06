@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Six GB Lab</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}body{margin:0}
+/* Layout: sticky tab bar over four rooms (Overview, Changes, Overclock, Port it). Overview opens with one speed-up chart; every row, change and table opens on demand. */
+:root{
+  --bg:#eef1f3;--panel:#fbfcfc;--fg:#15202a;--mute:#566673;--line:#d3dade;--track:#e2e7ea;
+  --cfg:#0b7a75;--spec:#3b5bdb;--hw:#b7791f;--base:#9aa8b2;--ok:#1c8a4a;--bad:#c0392b;--warn:#b7791f;
+  --okbg:#dff3e6;--warnbg:#f8ebd0;--badbg:#f8dcd8;--nobg:#e2e7ea;--infobg:#dfe5fb;--info:#3b5bdb;--hover:#e6ecee;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f161b;--panel:#162027;--fg:#e4ebef;--mute:#8fa0ab;--line:#27343d;--track:#222e36;
+  --cfg:#3fc9bf;--spec:#8da2f5;--hw:#e0a94a;--base:#5d7080;--ok:#4cc27f;--bad:#ef7566;--warn:#e0a94a;
+  --okbg:#17372a;--warnbg:#3a2f16;--badbg:#3d1f1b;--nobg:#222e36;--infobg:#1f2748;--info:#8da2f5;--hover:#1c2a33;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161b;--panel:#162027;--fg:#e4ebef;--mute:#8fa0ab;--line:#27343d;--track:#222e36;
+  --cfg:#3fc9bf;--spec:#8da2f5;--hw:#e0a94a;--base:#5d7080;--ok:#4cc27f;--bad:#ef7566;--warn:#e0a94a;
+  --okbg:#17372a;--warnbg:#3a2f16;--badbg:#3d1f1b;--nobg:#222e36;--infobg:#1f2748;--info:#8da2f5;--hover:#1c2a33;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);padding-inline:16px}
+.wrap{max-width:940px;margin:0 auto;padding-block:28px 72px;display:flex;flex-direction:column;gap:22px}
+h1{font:800 clamp(32px,7vw,58px)/1 var(--display);margin:0;letter-spacing:-.025em;text-wrap:balance}
+h2{font:600 20px/1.2 var(--display);margin:0;text-wrap:balance}
+h3{font:600 16px/1.2 var(--display);margin:0}
+p{margin:0}
+.eyebrow{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.lede{color:var(--mute);max-width:62ch;margin-top:10px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--cfg);outline-offset:2px}
+
+/* tabs */
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin-inline:-16px;padding-inline:16px;border-bottom:1px solid var(--line)}
+.tabs-in{position:relative;max-width:940px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs-in::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;padding:12px 14px;font:500 13px var(--mono);color:var(--mute);white-space:nowrap;transition:color .2s}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{color:var(--fg)}
+.ink{position:absolute;bottom:0;height:2px;background:var(--cfg);left:0;width:0;transition:transform .3s cubic-bezier(.3,.7,.2,1),width .3s}
+.room[hidden]{display:none}
+.room{display:flex;flex-direction:column;gap:22px;animation:rise .35s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* panels */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.pad{padding:18px}
+.chip{display:inline-block;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap}
+.v-applied,.v-saved{background:var(--okbg);color:var(--ok)}
+.v-nogain{background:var(--nobg);color:var(--mute)}
+.v-nogo{background:var(--badbg);color:var(--bad)}
+.v-open{background:var(--warnbg);color:var(--warn)}
+.v-info{background:var(--infobg);color:var(--info)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font:12px var(--mono);color:var(--mute)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;margin-right:6px;background:var(--c);border-radius:2px}
+.hint{font:12px var(--mono);color:var(--mute)}
+.foot{color:var(--mute);font-size:13px}
+
+/* vital rows */
+.vrow{border-top:1px solid var(--line)}
+.vrow:first-child{border-top:0}
+.vbtn{width:100%;background:none;border:0;text-align:left;padding:12px 18px;display:flex;flex-direction:column;gap:6px;transition:background .15s}
+.vbtn:hover{background:var(--hover)}
+.vtop{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.vname{font-weight:500}
+.nums{font:12px var(--mono);color:var(--mute)}
+.vline{display:grid;grid-template-columns:1fr 66px;gap:10px;align-items:center}
+.track{position:relative;height:22px;background:var(--track);border-radius:2px}
+.track i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1),filter .15s}
+.vbtn:hover .track i{filter:brightness(1.12)}
+.one{position:absolute;top:-3px;bottom:-3px;border-left:1px dashed var(--mute)}
+.mult{font:500 16px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.chev{display:inline-block;transition:transform .25s;color:var(--mute);margin-right:6px}
+[aria-expanded="true"]>.vtop .chev,[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.fold.open{grid-template-rows:1fr}
+.fold>div{overflow:hidden;min-height:0}
+.fin{padding:4px 18px 16px;display:flex;flex-direction:column;gap:8px}
+.ba{display:grid;grid-template-columns:54px 1fr 60px;gap:10px;align-items:center;font:12px var(--mono)}
+.ba .bar{height:12px;background:var(--track);border-radius:2px;overflow:hidden}
+.ba .bar i{display:block;height:100%}
+.jump{align-self:flex-start;background:none;border:1px solid var(--line);border-radius:3px;padding:5px 10px;font:12px var(--mono);transition:background .15s,border-color .15s}
+.jump:hover{background:var(--hover);border-color:var(--mute)}
+
+/* changes */
+.bar-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fbtn{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:6px 10px;font:500 12px var(--mono);transition:background .15s,transform .1s}
+.fbtn:hover{background:var(--hover)}
+.fbtn:active{transform:scale(.97)}
+.fbtn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.spacer{flex:1}
+.chg{border-top:1px solid var(--line);scroll-margin-top:60px}
+.chg:first-child{border-top:0}
+.chg.hide{display:none}
+.chead{width:100%;background:none;border:0;text-align:left;padding:13px 18px;display:grid;grid-template-columns:28px 1fr auto;gap:2px 10px;align-items:baseline;transition:background .15s}
+.chead:hover{background:var(--hover)}
+.cid{font:800 13px var(--mono);color:var(--cfg)}
+.ctitle{font-weight:500;min-width:0}
+.csub{grid-column:2/4;color:var(--mute);font-size:13px}
+.ctime{font:11px var(--mono);color:var(--mute);margin-left:8px}
+.cbody{padding:2px 18px 18px 56px;display:flex;flex-direction:column;gap:12px}
+.cbody .read{max-width:68ch}
+.group{display:flex;flex-direction:column;gap:5px;min-width:0}
+.gt{font:500 12px var(--mono);color:var(--mute)}
+.row{display:grid;grid-template-columns:minmax(110px,200px) 1fr auto;gap:10px;align-items:center;font-size:13px}
+.row .lab{min-width:0;overflow-wrap:anywhere}
+.bar{height:14px;background:var(--track);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--base);width:0;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.row.new .bar i{background:var(--cfg)}
+.row.bad .bar i{background:var(--bad)}
+.row:hover .bar i{filter:brightness(1.15)}
+.val{font:12px var(--mono);text-align:right;min-width:100px}
+.val b{font-weight:500;margin-left:6px}
+.up{color:var(--ok)}.dn{color:var(--bad)}
+
+/* overclock */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{background:var(--panel);border:0;padding:7px 12px;font:500 12px var(--mono);border-right:1px solid var(--line);transition:background .15s}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.chartbox{position:relative;overflow-x:auto}
+.chartbox svg{display:block;min-width:440px;width:100%;height:auto}
+svg text{fill:var(--mute);font:11px var(--mono)}
+.ser{transition:opacity .3s}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font:11px/1.4 var(--mono);padding:6px 8px;border-radius:3px;opacity:0;transition:opacity .12s;white-space:nowrap;z-index:2}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line)}
+.stats>div{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.stats .k{font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.stats .n{font:500 17px var(--mono)}
+
+/* accordion / port */
+.acc{border-top:1px solid var(--line)}
+.acc:first-child{border-top:0}
+.ahead{width:100%;background:none;border:0;text-align:left;padding:14px 18px;display:flex;align-items:center;gap:6px;transition:background .15s}
+.ahead:hover{background:var(--hover)}
+.abody{padding:2px 18px 18px;display:flex;flex-direction:column;gap:10px;max-width:none}
+.abody p,.abody li{max-width:70ch}
+.abody ul,.abody ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:13px}
+th{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:500;white-space:nowrap}
+.code{position:relative;background:var(--track);border-radius:4px;padding:10px 78px 10px 12px;font:12px/1.6 var(--mono);overflow-x:auto;white-space:pre}
+.copy{position:absolute;right:6px;top:6px;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:4px 9px;font:11px var(--mono);transition:background .15s}
+.copy:hover{background:var(--hover)}
+.copy.done{color:var(--ok);border-color:var(--ok)}
+@media (max-width:560px){.row{grid-template-columns:1fr auto}.row .bar{grid-column:1/-1;order:3}.val{min-width:0}.cbody{padding-left:18px}.chead{grid-template-columns:24px 1fr}.chead .chip{grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">llama.cpp fork · Ryzen 5 7600X · GTX 1660 Ti 6 GB · measured 2026-10-06</div>
+  <h1>Squeezing a 6 GB card</h1>
+  <p class="lede">What was tried on one small GPU in one day, what stuck, what did not, and how to repeat the overclock on your own hardware. Everything opens on demand.</p>
+</header>
+<nav class="tabs" aria-label="Sections"><div class="tabs-in" role="tablist" id="tabs">
+  <button class="tab" role="tab" data-t="overview">Overview</button>
+  <button class="tab" role="tab" data-t="changes">All changes</button>
+  <button class="tab" role="tab" data-t="overclock">Overclock</button>
+  <button class="tab" role="tab" data-t="port">Port the kit</button>
+  <span class="ink" id="ink"></span></div></nav>
+
+<section class="room" id="r-overview" role="tabpanel">
+  <div class="panel">
+    <div class="pad" style="display:flex;flex-direction:column;gap:6px;padding-bottom:10px">
+      <h2>What the tuning bought</h2>
+      <p class="hint">Speed-up in generated tokens per second, kept changes only. Dashed line is 1x. Click a row for its before and after.</p>
+    </div>
+    <div id="vital"></div>
+    <div class="pad"><div class="legend"><span style="--c:var(--spec)">speculative decoding</span><span style="--c:var(--cfg)">layers and KV cache setting</span><span style="--c:var(--hw)">GPU clocks</span></div></div>
+  </div>
+  <div class="panel">
+    <button class="ahead" aria-expanded="false" data-acc><span class="chev">&#9656;</span><h3>About these numbers</h3></button>
+    <div class="fold"><div><div class="abody foot">
+      <ul>
+        <li>Models: R1-distill-Qwen 7B Q4_K_S, Qwythos 9B Q4_K_M, Qwen2.5 3B Q5_K_M. The 9B keeps part of its layers on the CPU.</li>
+        <li>Speculative rows use the built-in ngram-simple on a prompt that asks for one changed function and prints the whole file again. The answer text matched the run without it. Plain questions did not speed up or slow down. The 7B thinks first, so it gained nothing there.</li>
+        <li>Layer and KV rows combine two changes: more layers on the GPU after a display moved to the iGPU, and the 7B value cache stored at 4 bits with the key cache at 8 bits. Perplexity moved 8.181 to 8.204, inside its +/-0.14 error.</li>
+        <li>The clocks row is the 7B at a 4K context, from a 100 W power limit with stock clocks to 120 W with memory +2300 and core +105 offsets.</li>
+        <li>Single passes of 3 repetitions. Differences under about 3% are noise. The 7B 15K before and after come from two runs hours apart.</li>
+        <li>The first overclock run (100 W) logged power readings that were too low because the sampler was fixed afterwards. The 12:29-12:39 system runs are labelled from file names (pl100, lgc, mo250, thp), read as 100 W limit, locked clocks, memory offset +250 and huge pages. The 13:56 full run came right after the soak with the offsets still active; I did not read them back, so its gain is probably the overclock.</li>
+        <li>The lab.py suite runs (10:18-10:25) are not charted. TRIALS.md has no figures for them.</li>
+      </ul></div></div></div>
+  </div>
+</section>
+
+<section class="room" id="r-changes" role="tabpanel" hidden>
+  <div class="bar-tools" id="filters" role="group" aria-label="Filter by verdict"></div>
+  <div class="panel" id="list"></div>
+</section>
+
+<section class="room" id="r-overclock" role="tabpanel" hidden>
+  <div class="panel">
+    <div class="stats" id="ocstats"></div>
+  </div>
+  <div class="panel pad" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
+      <div><h2>Sweeps, step by step</h2><p class="hint" style="margin-top:4px">R1-distill 7B decode at 4K context. Hover or touch a chart to read each step.</p></div>
+      <div class="seg" id="runseg" role="group" aria-label="Which run"><button data-r="a">100 W run</button><button data-r="b">120 W run</button><button data-r="ab" aria-pressed="true">Both</button></div>
+    </div>
+    <div><div class="gt" style="margin-bottom:4px">Memory offset against decode t/s</div><div class="chartbox" id="ocmem"></div></div>
+    <div><div class="gt" style="margin-bottom:4px">Core offset against decode t/s</div><div class="chartbox" id="occore"></div></div>
+    <div class="legend" id="oclegend"></div>
+  </div>
+  <div class="panel" id="ocacc"></div>
+</section>
+
+<section class="room" id="r-port" role="tabpanel" hidden>
+  <div class="panel pad"><h2>Run this on another machine</h2><p class="lede" style="margin-top:6px">The overclock script is in the repo under local-tune/oc-kit with an AGENT.md for an AI agent. This is the same guide, opened one part at a time.</p></div>
+  <div class="panel" id="portacc"></div>
+</section>
+</div>
+
+<script>
+const V = {applied:["Applied","applied"],saved:["Saved","saved"],nogain:["No gain","nogain"],nogo:["No-go","nogo"],open:["Not applied","open"],info:["Reference","info"]};
+const C = [
+{id:"A1",t:"01:47-02:12",title:"GPU layers after the display moved to the iGPU",v:"applied",head:"9B +15% at 0K, 7B +37% at 0K",
+ read:"With one display on the iGPU the desktop holds about 750 MiB instead of 1 GB. More layers fit. The gateway moved the 9B from -ngl 22 to 25 and the 7B from 24 to 28. The driver keeps about 390 MiB, so a context fails to create above about 5750 MiB used.",
+ groups:[{t:"R1-distill 7B, writing t/s at 0K, by -ngl",u:"t/s",rows:[["ngl 24 (old)",35.1],["ngl 26",39.9],["ngl 27",40.3],["ngl 28 (chosen)",48.2,"new"],["ngl 99, 180 MiB left",53.6]]},
+         {t:"Qwythos 9B, writing t/s at 0K, by -ngl",u:"t/s",rows:[["ngl 22 (old)",21.3],["ngl 24",23.5],["ngl 25 (chosen)",24.6,"new"],["ngl 26",25.6],["ngl 27",27.2]]}]},
+{id:"A2",t:"02:18-02:32",title:"ngram-simple speculative decoding on code edits",v:"applied",head:"9B edit 7.0x, 3B edit 3.2x, open question unchanged",
+ read:"Drafts tokens by copying text that already appeared. Output is identical to the run without it except one 7B refactor answer and one answer under load. Applied to the 9B, 3B and 1.3B models. The 7B writes reasoning first, so there is nothing to copy there.",
+ groups:[{pair:1,t:"Qwen2.5 3B, t/s",rows:[["rewrite, none",86.6],["rewrite, ngram-simple",386.9,"new"],["edit, none",86.7],["edit, ngram-simple",273.7,"new"],["free question, none",88.4],["free question, ngram-simple",88.4,"new"]]},
+         {pair:1,t:"Qwythos 9B at -ngl 25, t/s",rows:[["edit, none",24.1],["edit, ngram-simple",169.6,"new"],["refactor, none",24.0],["refactor, ngram-simple",52.7,"new"]]},
+         {pair:1,t:"R1-distill 7B, 400 tokens (all reasoning), t/s",rows:[["edit, none",51.5],["edit, ngram-simple",51.4],["refactor, none",51.5],["refactor, ngram-simple",53.3]]}]},
+{id:"A3",t:"02:18",title:"ngram-simple lookup length and map variants",v:"nogain",head:"defaults kept",
+ read:"n=8 and n=6 write 9-25% faster on code but also draft on the open question (0-1% accepted), which costs 2-7% there and changes the text. n=16 and m=24 are slower, m=96 is equal. ngram-map-k and ngram-map-k4v match the default on rewrite and do nothing on edit or refactor.",groups:[]},
+{id:"A4",t:"02:26",title:"Draft-model speculative decoding (draft-simple)",v:"nogo",head:"best 1.7x on code, up to 68% slower elsewhere",
+ read:"Qwen2.5 0.5B as the draft for the 3B, both on GPU. ngram-simple alone is faster on code and free on the rest. The 7B refuses this draft (BOS token differs) and the 9B has no same-vocabulary small model.",
+ groups:[{t:"Qwen2.5 3B, edit t/s",rows:[["none",86.6],["ngram-simple",273.3,"new"],["draft n-max 3",109.2,"bad"],["draft n-max 16",132.3,"bad"],["draft n-max 16, p-min 0.75",143.9,"bad"]]},
+         {t:"Qwen2.5 3B, free question t/s",rows:[["none",88.4],["ngram-simple",88.2,"new"],["draft n-max 3",68.1,"bad"],["draft n-max 8",38.7,"bad"],["draft n-max 16",28.3,"bad"],["draft n-max 16, p-min 0.75",72.4,"bad"]]}]},
+{id:"A5",t:"01:47-01:53",title:"Fusion disabled (GGML_CUDA_DISABLE_FUSION=1)",v:"nogo",head:"decode 1-9% slower",
+ read:"Prompt speed is equal. Decode is slower on every model: 5% on the 1.3B, 3-9% on the 7B, 1-4% on the 9B hybrid. Default kept.",
+ groups:[{t:"deepseek-coder 1.3B decode t/s",rows:[["fusion on (default)",151],["fusion off",143,"bad"]]}]},
+{id:"A6",t:"01:51-01:54",title:"Larger physical batch (-ub 1024 / 2048)",v:"nogain",head:"+1.5-3% for 70-900 MiB of VRAM",
+ read:"Prompt reading with a 2048-token prompt. The 7B does not fit at 2048 and the 9B hybrid is not repeatable. Default kept.",
+ groups:[{t:"deepseek-coder 1.3B, prompt t/s",rows:[["-ub 512",2710],["-ub 1024",2796],["-ub 2048",2814]]},
+         {t:"Qwen2.5 3B, prompt t/s",rows:[["-ub 512",1227],["-ub 1024",1257],["-ub 2048",1263]]},
+         {t:"R1-distill 7B, prompt t/s",rows:[["-ub 512",645],["-ub 1024",655],["-ub 2048 (does not fit)",0]]}]},
+{id:"A7",t:"01:56",title:"Host-side switches on the 9B hybrid",v:"nogain",head:"all within 20.5-21.3 t/s",
+ read:"GGML_CUDA_REGISTER_HOST=1, --poll 0 and 100, --prio 2 and core pinning with -C 0x3F --cpu-strict 1. The two baseline passes were 21.3 and 19.1, so these are inside the spread.",
+ groups:[{t:"Qwythos 9B at -ngl 22, decode t/s",rows:[["baseline pass 1",21.3],["baseline pass 2",19.1],["best switch",21.3,"new"],["worst switch",20.5,"new"]]}]},
+{id:"A8",t:"02:20-02:21",title:"GGML_CUDA_GRAPH_OPT=1 under server load",v:"nogain",head:"139.4 vs 139.2 t/s",
+ read:"The 2-5% seen in llama-bench on the 1.3B does not show on llama-server, with one request or four at once.",
+ groups:[{pair:1,t:"deepseek-coder 1.3B on llama-server, t/s",rows:[["one request, off",139.2],["one request, on",139.4,"new"],["4 at once, off",343.7],["4 at once, on",345.4,"new"]]}]},
+{id:"B1",t:"09:12-09:57",title:"KV cache: K at q8_0, V at q4_0 on the 7B",v:"applied",head:"+11% at 0K, +16% at 15K, perplexity +0.02",
+ read:"The q8_0/q4_0 attention pair is built by default and the gateway now runs the 7B with -ngl 99 -ctk q8_0 -ctv q4_0. Perplexity 8.204 against 8.181, inside the +/-0.14 error (f16 is 8.166). Prompt reading is equal. test-backend-ops FLASH_ATTN_EXT passes.",
+ groups:[{pair:1,t:"R1-distill 7B writing t/s, two passes averaged",rows:[["0K: ngl 28, K q8 / V q8 (before)",48.45],["0K: ngl 99, K q8 / V q4 (now)",53.7,"new"],["8K: before",35.2],["8K: now",40.25,"new"],["15K: before",28.35],["15K: now",32.85,"new"]]}]},
+{id:"B2",t:"09:39",title:"K at q4_0 on the 7B",v:"nogo",head:"perplexity 8.17 to 1534",
+ read:"Breaks this model on every path (GPU 1534, old build 4227, attention on CPU 4064, against 12.8 for q8/q8 on 4 chunks), so it is the format and not a kernel. Keep K at q8_0.",
+ groups:[{t:"Perplexity, 4 chunks, lower is better",rows:[["K q8_0 / V q8_0",12.8],["K q4_0 on GPU",1534,"bad"],["K q4_0, attention on CPU",4064,"bad"],["K q4_0, old build",4227,"bad"]]}]},
+{id:"B3",t:"10:03-10:12",title:"KV mixing and --fit on the 9B / 7B",v:"nogain",head:"9B perplexity flat across KV types; --fit needs -fitt 512",
+ read:"The 9B keeps its perplexity with every KV type (3.716 f16, 3.709 q8/q8, 3.708 q8/q4, 3.725 q4/q4) and V q4 frees only about 40 MiB there. --fit on picks 25 of 29 layers on the 7B with its default 1024 MiB margin; with -fitt 512 or 256 it picks all 29.",
+ groups:[{t:"7B decode t/s with --fit",rows:[["--fit on, default margin (25 layers)",34.5],["-fitt 512 (29 layers)",48.5,"new"],["fixed -ngl 99",47.2]]}]},
+{id:"C1",t:"11:20",title:"ik_llama.cpp as an upper bound",v:"nogo",head:"prompt reading 3.6x slower, writing equal or slower",
+ read:"A separate fork (fdb8e67, built here), bench.sh -t 6 -fa 1, one pass of 3 repetitions. It adds nothing over this tree.",
+ groups:[{pair:1,t:"Prompt t/s (pp512)",rows:[["1.3B: ik",844],["1.3B: this tree",3036,"new"],["3B: ik",377],["3B: this tree",1356,"new"],["9B ngl 22: ik",153],["9B ngl 22: this tree",496,"new"]]},
+         {pair:1,t:"Writing t/s (tg128)",rows:[["1.3B: ik",153.6],["1.3B: this tree",152.0,"new"],["3B: ik",85.3],["3B: this tree",93.3,"new"],["9B ngl 22: ik",15.2],["9B ngl 22: this tree",21.1,"new"],["9B CPU: ik",8.0],["9B CPU: this tree",8.5,"new"]]}]},
+{id:"C2",t:"11:28-11:36",title:"DFlash draft head for the 9B",v:"nogo",head:"1.8x over a slow baseline, nothing over a layer count",
+ read:"At -ngl 20 the draft run ran out of memory, so it ran at -ngl 14 with the draft on the CPU. With the draft on the GPU it does not fit. Plain -ngl 25 writes 24 t/s and ngram-simple reaches 139 (edit) and 44 (refactor).",
+ groups:[{t:"Qwythos 9B, edit t/s",rows:[["-ngl 14, none",13.7],["-ngl 14, DFlash",24.6,"new"],["-ngl 25, none",24],["-ngl 25, ngram-simple",139,"new"]]}]},
+{id:"D1",t:"12:11-12:19",title:"9B at -ngl 26 / 27 with K q8_0, V q4_0, 16K context",v:"open",head:"-ngl 26 stable, +4% at 0K; not applied",
+ read:"-ngl 27 failed to create the 15K context in one pass. Peak VRAM 5649 / 5671 / 5706 MiB against a limit of about 5750. Gateway stays at -ngl 25 for headroom.",
+ groups:[{t:"Qwythos 9B writing t/s at 15K (two passes averaged)",rows:[["ngl 25",17.85],["ngl 26",20.95,"new"],["ngl 27 (one pass failed)",21.9,"bad"]]},
+         {t:"Qwythos 9B writing t/s at 0K",rows:[["ngl 25",23.7],["ngl 26",25.35,"new"],["ngl 27",26.7,"bad"]]}]},
+{id:"D2",t:"12:24",title:"ngram-simple lookup n=24 on the 7B, 2000-token answers",v:"open",head:"2.2x on edit with the same text; refactor still differs",
+ read:"With the gateway settings (-ngl 99, K q8_0 / V q4_0) the answers now finish. Refactor differs from the no-draft text in every variant and nothing here says whether it is worse. Not applied.",
+ groups:[{t:"R1-distill 7B edit t/s",rows:[["none",50.1],["n=12 (default), text differs",103.9],["n=24, same text",110.1,"new"],["n=48, same text",103.0]]},
+         {t:"R1-distill 7B refactor t/s (text differs in every draft variant)",rows:[["none",51.0],["n=12",79.9,"bad"],["n=24",65.9,"bad"],["n=48",62.8,"bad"]]}]},
+{id:"E1",t:"12:29-12:39",title:"System switches: power limit, locked clocks, memory offset, huge pages",v:"nogain",head:"none beat the stock run; 100 W costs 1-3%",
+ read:"Five bench.sh runs, labels taken from the file names (see note below). Nothing is faster than base. A decode difference under 3% is within pass-to-pass spread.",
+ groups:[{t:"deepseek-coder 1.3B decode t/s",rows:[["base",154.2,"cur"],["pl100",152.7],["lgc",152.5],["mo250",151.5],["thp",152.4]]},
+         {t:"Qwen2.5 3B decode t/s",rows:[["base",95.0,"cur"],["pl100",93.1],["lgc",93.1],["mo250",92.9],["thp",92.1]]},
+         {t:"Qwythos 9B ngl 22 decode t/s",rows:[["base",21.3,"cur"],["pl100",20.95],["lgc",20.96],["mo250",21.2],["thp",20.6]]}]},
+{id:"F1",t:"12:50-13:22",title:"Overclock, first sweep at a 100 W limit",v:"saved",head:"43.8 to 47.5 t/s (+8%), memory to +1500 cap, core limit +120",
+ read:"R1-distill 7B decode at 4K context, perplexity checked digit for digit (12.8239). Memory passed to the +1500 cap without a limit found. Core +135 failed on a perplexity shift (12.8248). Saved memory +1400 and core +105 after 13 soak passes.",
+ chart:"oc"},
+{id:"F2",t:"13:25-13:46",title:"Overclock resumed at 120 W, upward only",v:"saved",head:"50.7 t/s, +16% over stock at 100 W; saved mem +2300, core +105",
+ read:"Power limit moved from 100 W to 120 W. The saved pair re-verified at 49-50 t/s, then memory climbed from +1500 to +2400 with no failure and core +135 failed again on a smaller perplexity shift (12.8234). The saved memory is +2300 (6900 MHz) with the one-step margin, core +105, and 14 soak passes held 12.8239, 73-75 C and 121-123 W.",
+ chart:"oc"},
+{id:"G1",t:"13:56",title:"Full local-model benchmark, current state",v:"info",head:"+5-14% over the 11:21 run, probably from the overclock",
+ read:"bench.sh on build-live across the four standard setups. Compared with the 11:21 live-probe run (same build, before any clock change).",
+ groups:[{t:"deepseek-coder 1.3B decode t/s",rows:[["11:21 before",152.0],["13:56 now",175.6,"new"]]},
+         {t:"Qwen2.5 3B decode t/s",rows:[["11:21 before",93.3],["13:56 now",107.1,"new"]]},
+         {t:"Qwythos 9B ngl 22 decode t/s",rows:[["11:21 before",21.1],["13:56 now",21.6,"new"]]},
+         {t:"Qwythos 9B CPU only decode t/s",rows:[["11:21 before",8.5],["13:56 now",9.4,"new"]]},
+         {pair:1,t:"Prompt t/s (pp512): 1.3B / 3B / 9B ngl 22 / 9B CPU",rows:[["1.3B before",3036],["1.3B now",3242,"new"],["3B before",1356],["3B now",1427,"new"],["9B ngl 22 before",496],["9B ngl 22 now",524,"new"],["9B CPU before",403],["9B CPU now",420,"new"]]}]}
+];
+
+
+const memRun1=[[0,43.8],[100,44.4],[200,43.9],[300,45.0],[400,44.8],[500,45.1],[600,45.3],[700,45.4],[800,45.5],[900,42.6],[1000,45.7],[1100,45.8],[1200,45.1],[1300,46.0],[1400,46.0],[1500,46.2]];
+const memRun2=[[1400,50.2],[1500,50.2],[1600,50.2],[1700,50.2],[1800,50.2],[1900,50.4],[2000,49.0],[2100,50.6],[2200,50.7],[2300,50.7],[2400,50.6]];
+const coreRun1=[[0,46.0],[15,43.7],[30,46.6],[45,46.8],[60,46.9],[75,46.2],[90,47.4],[105,47.4],[120,47.7]];
+const coreRun2=[[105,50.7],[120,50.9]];
+const V_ROWS=[
+["9B, code edit with speculative decoding","spec",24.1,169.6,"A2","The model copies text it already wrote. Output matched the run without it; open questions neither sped up nor slowed down."],
+["3B, code edit with speculative decoding","spec",86.7,273.7,"A2","Same mechanism on the 3B. A small draft model was tried and lost to this (No-go, A4)."],
+["7B, 15K context, more layers and 4-bit values","cfg",18.2,32.9,"B1","All layers on the GPU after a display moved to the iGPU, with the value cache at 4 bits and the key cache at 8 bits."],
+["7B, empty context, more layers and 4-bit values","cfg",35.1,53.7,"B1","Same change at the start of a chat. Perplexity 8.181 to 8.204, inside its error."],
+["7B, 4K context, raised GPU clocks and 120 W","hw",43.8,50.7,"F2","Memory +2300 and core +105 offsets, every step checked for an identical perplexity, 14 soak passes."],
+["9B, 15K context, more layers","cfg",15.2,17.7,"A1","-ngl 22 to 25. The driver keeps about 390 MiB, so a context fails to create above about 5750 MiB used."],
+["9B, empty context, more layers","cfg",21.3,24.6,"A1","Same change at the start of a chat."]];
+const OC_STATS=[["Stock, 100 W","43.8 t/s","7B decode, 4K context"],["Final","50.7 t/s","+16%"],["Memory offset","+2300","6001 to 6900 MHz"],["Core offset","+105","limit +120, +135 fails"],["Power limit","120 W","range 70-120 W"],["Soak","14 of 14","perplexity 12.8239, 73-75 C"],["Run time","21 min","second run, 1252 s"]];
+const OC_ACC=[
+["How a step is judged",`<ul><li>The process exits cleanly and the kernel log has no new NVRM Xid line.</li><li>Perplexity equals the stock value digit for digit. The run is deterministic, so one flipped bit moves it. Core +135 failed this way twice (12.8248, then 12.8234).</li><li>Decode speed did not fall under 93% of the best so far. GDDR6 retries bad transfers, which shows as lost speed before errors.</li><li>Temperature stays under 83 C.</li><li>A hang or timeout counts as a failure.</li></ul>`],
+["What the two runs did",`<ol><li><b>12:50, 100 W.</b> Stock baseline of 3 runs, memory swept to its +1500 cap (no limit found), core to +120 (limit). Saved memory +1400 and core +105 after 13 soak passes. Decode 43.8 to 47.5 t/s.</li><li><b>13:25, 120 W, resume.</b> Applied the saved pair, raised the power limit, re-verified it (49 to 50 t/s), then swept upward only. Memory rose to +2400 with no failure, core +135 failed again. Saved memory +2300 (one step of margin) and core +105 after 14 soak passes.</li></ol><p class="foot">Offsets live in the driver only. A reboot or a crash returns them to zero, and a hard hang needs the power button. The saved file changes only after the final soak passes, and the old one is backed up.</p>`],
+["Where the speed came from",`<p>At 100 W the clock offsets alone took decode from 43.8 to 47.5 t/s (+8%). Raising the limit to 120 W at the same offsets (+1400 memory, +105 core) gave 49 to 50 t/s, about +5% more. Memory +1400 to +2300 added roughly another 1 t/s. Memory-only steps at 100 W were small and steady (43.8 to 46.2 t/s up to +1500). Single passes, so treat splits under 3% as noise.</p>`]];
+const cmd=t=>`<div class="code" data-t="${t.replace(/"/g,"&quot;")}"><span>${t.replace(/</g,"&lt;")}</span></div>`;
+const PORT_ACC=[
+["How it works",`<ol><li>NVML sets the memory and core V/F offsets from a small sudo subprocess. The power limit uses nvidia-smi.</li><li>Each step runs a fixed workload: llama-bench decode, then llama-perplexity on 4 fixed chunks. It passes only on a clean exit, no new Xid line, identical perplexity, decode within 93% of the best, and temperature under 83 C.</li><li>Memory is swept up to the first failure, then the core, then it backs off one step and a soak (10 minutes by default) must pass.</li><li>The state file is written only after the soak passes. --resume re-verifies it and only goes upward. apply sets it again after a reboot.</li></ol>`],
+["Edits for a different system",`<div class="scroll"><table><thead><tr><th>What</th><th>Change it to</th></tr></thead><tbody>
+<tr><td>Model file</td><td>A GGUF that fits in this GPU's VRAM with all layers on it (-ngl 99) and the KV settings below. Replace the hardcoded path search.</td></tr>
+<tr><td>Build directory</td><td>The llama.cpp build with llama-bench and llama-perplexity, built for this GPU's architecture (for example 86 Ampere, 89 Ada, 120 Blackwell).</td></tr>
+<tr><td>Perplexity corpus</td><td>Any fixed plain-text file of about 400 KB. Keep it unchanged between runs.</td></tr>
+<tr><td>KV cache flags</td><td>Drop -ctk q8_0 -ctv q4_0 (or use f16) if the build lacks that pair. Keep the flags the same in bench and perplexity.</td></tr>
+<tr><td>Threads</td><td>The number of physical cores.</td></tr>
+<tr><td>Depth and size</td><td>Shrink -d, -c and --chunks if VRAM is tight. A step should take 20 to 60 seconds.</td></tr>
+<tr><td>Sweep limits</td><td>Mem and core maximum and step. On Turing the memory offset was half the displayed clock change. Check the real clock with nvidia-smi -q -d CLOCK and size steps to 25-50 MHz real.</td></tr>
+<tr><td>Power limit</td><td>Within the Min and Max from nvidia-smi -q -d POWER. Never above Max.</td></tr>
+<tr><td>Temperature ceiling</td><td>The card's slowdown temperature minus a few degrees.</td></tr>
+<tr><td>GPU index</td><td>Pass the right index to NVML and every nvidia-smi call on multi-GPU machines.</td></tr>
+<tr><td>Other GPU users</td><td>Stop any service that holds the GPU. Nothing else may use it during a run.</td></tr>
+<tr><td>Live view</td><td>Optional. watch.py renders the log; change or remove the terminal launch.</td></tr></tbody></table></div>`],
+["Check before the sweep",`<ol><li>nvidia-smi works and the driver is the proprietary one. NVML offset calls do not exist on nouveau. AMD and Intel need a different mechanism (for example pp_od_clk_voltage or rocm-smi) and a rewrite of the offset and query functions.</li><li>Setting an offset of 0 must succeed. If it fails, the driver rejects NVML offsets (some laptops and datacenter cards). Stop there.</li><li>Run the workload three times by hand. The perplexity line must be identical each time. If it is not, the check cannot see corruption on this build.</li><li>Warn the user that a hang can need the power button, and that nothing should be saved or running on the GPU.</li></ol>${cmd("sudo python3 gpu-push.py _set mem 0; echo $?")}`],
+["Run it",`<p>First run, later resume, after each reboot, and back to stock:</p>${cmd("python3 gpu-push.py --mem-max 1500 --core-max 300 --power 120")}${cmd("python3 gpu-push.py --resume --power 120 --mem-max 2400")}${cmd("python3 gpu-push.py apply")}${cmd("python3 gpu-push.py reset")}<p class="foot">The log is results/gpupush-STAMP.log with TEST, PHASE and ALLDONE lines. The result is results/gpu-oc.json.</p>`],
+["Known weak spots",`<ul><li>The sampler thread that reads power and temperature during a step was added late and is lightly tested.</li><li>The 0.93 decode threshold absorbs about 3% run-to-run noise. Widen it on a noisier machine.</li><li>The perplexity equality check is the silent-corruption detector. Do not round it.</li><li>Memory trouble can show as lower speed before wrong output, which is why decode is checked.</li><li>A passing soak is the bar. Do not call the result stable from the sweep alone, and watch longer real workloads.</li></ul>`]];
+
+const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const fmt=n=>n>=1000?n.toLocaleString("en",{maximumFractionDigits:0}):(Math.round(n*10)/10).toString();
+const RM=matchMedia("(prefers-reduced-motion:reduce)").matches;
+
+/* accordions (generic) */
+function toggle(btn,force){
+  const open=force!=null?force:btn.getAttribute("aria-expanded")!=="true";
+  btn.setAttribute("aria-expanded",open);
+  const f=btn.nextElementSibling;f.classList.toggle("open",open);
+  if(open)fillBars(f);
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-acc]");if(b)toggle(b)});
+function fillBars(root){$$("[data-w]",root).forEach(i=>{i.style.width=i.dataset.w+"%"})}
+
+/* vital chart */
+const MAX=7.5;
+const vit=$("#vital");
+V_ROWS.forEach(([n,k,a,b,cid,why])=>{
+  const m=b/a,row=el("div","vrow");
+  const btn=el("button","vbtn",`<span class="vtop"><span class="vname"><span class="chev">&#9656;</span>${n}</span><span class="nums">${fmt(a)} to ${fmt(b)} t/s</span></span>
+    <span class="vline"><span class="track"><i data-w="${(m/MAX*100).toFixed(1)}" style="background:var(--${k})"></i><span class="one" style="left:${100/MAX}%"></span></span><span class="mult" data-m="${m}">1.00x</span></span>`);
+  btn.setAttribute("aria-expanded","false");btn.dataset.acc="";
+  const fold=el("div","fold");const inner=el("div");
+  const sc=Math.max(a,b);
+  inner.innerHTML=`<div class="fin"><div class="ba"><span>before</span><span class="bar"><i data-w="${a/sc*100}" style="background:var(--base)"></i></span><span>${fmt(a)}</span></div>
+    <div class="ba"><span>after</span><span class="bar"><i data-w="${b/sc*100}" style="background:var(--${k})"></i></span><span>${fmt(b)}</span></div>
+    <p class="foot" style="max-width:62ch">${why}</p></div>`;
+  const j=el("button","jump","See the full change &rarr;");j.onclick=()=>goChange(cid);
+  inner.firstChild.append(j);
+  fold.append(inner);row.append(btn,fold);vit.append(row);
+});
+function animateVital(){
+  $$("#vital .track i").forEach(i=>requestAnimationFrame(()=>{i.style.width=i.dataset.w+"%"}));
+  $$("#vital .mult").forEach(m=>{const to=+m.dataset.m;if(RM){m.textContent=to.toFixed(2)+"x";return}
+    const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/900),e=1-Math.pow(1-p,3);m.textContent=(1+(to-1)*e).toFixed(2)+"x";if(p<1)requestAnimationFrame(f)})(t0)});
+}
+// handle vital buttons' own toggle: toggle() uses nextElementSibling which is the fold. Fine.
+
+/* changes */
+function group(g){
+  const box=el("div","group");box.append(el("div","gt",g.t));
+  const max=Math.max(...g.rows.map(r=>r[1]),1);let ref=null;
+  g.rows.forEach((r,i)=>{const [lab,v,k]=r;const row=el("div","row "+(k||""));
+    const d=ref&&v?(v/ref-1)*100:null;if(i===0||(g.pair&&k!=="new"&&k!=="bad"))ref=v;
+    const delta=(k==="new"||k==="bad")&&d!=null&&Math.abs(d)>=1?`<b class="${d>0?"up":"dn"}">${d>0?"+":""}${d.toFixed(0)}%</b>`:"";
+    row.append(el("span","lab",lab),el("span","bar",`<i data-w="${(v/max*100).toFixed(1)}"></i>`),el("span","val",fmt(v)+delta));box.append(row)});
+  return box;
+}
+const list=$("#list");let cur="all";
+C.forEach(c=>{
+  const [vl,vc]=V[c.v];const sec=el("article","chg");sec.id="c-"+c.id;sec.dataset.v=c.v;
+  const h=el("button","chead",`<span class="cid">${c.id}</span><span class="ctitle">${c.title}<span class="ctime">${c.t}</span></span><span class="chip v-${vc}">${vl}</span><span class="csub">${c.head}</span>`);
+  h.dataset.acc="";h.setAttribute("aria-expanded","false");
+  const f=el("div","fold"),i=el("div"),b=el("div","cbody");
+  b.append(el("p","read",c.read));
+  if(c.chart==="oc"){const a=el("p","hint","The sweeps are charted in the Overclock tab.");const bt=el("button","jump","Open the Overclock tab &rarr;");bt.onclick=()=>show("overclock");b.append(a,bt)}
+  (c.groups||[]).forEach(g=>b.append(group(g)));
+  if((c.groups||[]).some(g=>g.rows.some(r=>r[2])))b.append(el("div","legend",`<span style="--c:var(--base)">before / reference</span><span style="--c:var(--cfg)">candidate or after</span><span style="--c:var(--bad)">worse or failed</span>`));
+  i.append(b);f.append(i);sec.append(h,f);list.append(sec);
+});
+const fl=$("#filters");
+[["all","All"],...Object.entries(V).map(([k,v])=>[k,v[0]])].forEach(([k,l])=>{
+  const n=C.filter(c=>k==="all"||c.v===k).length;if(!n)return;
+  const b=el("button","fbtn",`${l} · ${n}`);b.dataset.v=k;b.setAttribute("aria-pressed",k==="all");
+  b.onclick=()=>{cur=k;$$("#filters .fbtn").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===k));$$(".chg").forEach(s=>s.classList.toggle("hide",k!=="all"&&s.dataset.v!==k))};
+  fl.append(b)});
+fl.append(el("span","spacer"));
+const ex=el("button","fbtn","Expand all");let allOpen=false;
+ex.onclick=()=>{allOpen=!allOpen;ex.textContent=allOpen?"Collapse all":"Expand all";$$(".chg:not(.hide) .chead").forEach(h=>toggle(h,allOpen))};
+fl.append(ex);
+function goChange(id){
+  show("changes");
+  const s=$("#c-"+id);if(!s)return;
+  $$(".fbtn")[0].click();
+  setTimeout(()=>{toggle($(".chead",s),true);s.scrollIntoView({behavior:RM?"auto":"smooth",block:"start"});},60);
+}
+
+/* overclock */
+$("#ocstats").innerHTML=OC_STATS.map(([k,n,s])=>`<div><span class="k">${k}</span><span class="n">${n}</span><span class="hint">${s}</span></div>`).join("");
+let runSel="ab";
+const charts=[];
+function lineChart(host,series,o){
+  const W=640,H=260,L=44,R=14,T=16,B=40,xs=x=>L+x/o.xmax*(W-L-R),ys=y=>H-B-(y-o.ymin)/(o.ymax-o.ymin)*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label}">`;
+  for(let y=Math.ceil(o.ymin/2)*2;y<=o.ymax;y+=2)s+=`<line x1="${L}" x2="${W-R}" y1="${ys(y)}" y2="${ys(y)}" stroke="var(--line)" fill="none"/><text x="${L-6}" y="${ys(y)+4}" text-anchor="end">${y}</text>`;
+  for(let x=0;x<=o.xmax;x+=o.xstep)s+=`<text x="${xs(x)}" y="${H-B+16}" text-anchor="middle">${x}</text>`;
+  s+=`<text x="${(L+W-R)/2}" y="${H-4}" text-anchor="middle">${o.xl} (t/s up)</text>`;
+  (o.marks||[]).forEach(n=>s+=`<line x1="${xs(n.x)}" x2="${xs(n.x)}" y1="${T}" y2="${H-B}" stroke="${n.c}" stroke-dasharray="3 3" fill="none"/><text x="${xs(n.x)-4}" y="${T+10}" text-anchor="end" style="fill:${n.c}">${n.t}</text>`);
+  series.forEach((se,i)=>{s+=`<g class="ser" data-s="${se.id}"><polyline fill="none" stroke="${se.c}" stroke-width="2" points="${se.p.map(p=>xs(p[0])+","+ys(p[1])).join(" ")}"/>${se.p.map(p=>`<circle cx="${xs(p[0])}" cy="${ys(p[1])}" r="2.8" fill="${se.c}"/>`).join("")}</g>`});
+  s+=`<line id="cur" y1="${T}" y2="${H-B}" stroke="var(--mute)" fill="none" opacity="0"/><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent" class="hit"/></svg>`;
+  host.innerHTML=s+`<div class="tip"></div>`;
+  const svg=$("svg",host),tip=$(".tip",host),cursor=$("#cur",host);
+  const cb={series,xs,W,H,host};charts.push(cb);
+  function move(e){
+    const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*W;const xv=(px-L)/(W-L-R)*o.xmax;
+    let lines=[],best=null;
+    series.forEach(se=>{if(!visible(se.id))return;let b=null;se.p.forEach(p=>{if(b==null||Math.abs(p[0]-xv)<Math.abs(b[0]-xv))b=p});
+      if(b&&Math.abs(b[0]-xv)<o.xstep*1.2){lines.push(`<span style="color:${se.c}">&#9679;</span> ${se.name}: ${b[1]} t/s`);if(!best||Math.abs(b[0]-xv)<Math.abs(best-xv))best=b[0]}});
+    if(best==null){tip.style.opacity=0;cursor.setAttribute("opacity",0);return}
+    cursor.setAttribute("x1",xs(best));cursor.setAttribute("x2",xs(best));cursor.setAttribute("opacity",.6);
+    tip.innerHTML=`${o.xl} +${best}<br>${lines.join("<br>")}`;tip.style.opacity=1;
+    const left=Math.min(r.width-150,Math.max(4,xs(best)/W*r.width+10));tip.style.left=left+"px";tip.style.top="6px";
+  }
+  svg.addEventListener("pointermove",move);svg.addEventListener("pointerleave",()=>{tip.style.opacity=0;cursor.setAttribute("opacity",0)});
+}
+const visible=id=>runSel==="ab"||runSel===id;
+function applyRun(){charts.forEach(c=>$$(".ser",c.host).forEach(g=>{g.style.opacity=visible(g.dataset.s)?1:.08}));
+  $$("#runseg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.r===runSel))}
+const A={id:"a",name:"100 W run",c:"var(--base)"},B={id:"b",name:"120 W run",c:"var(--cfg)"};
+lineChart($("#ocmem"),[{...A,p:memRun1},{...B,p:memRun2}],{xmax:2500,xstep:500,ymin:42,ymax:52,xl:"memory offset",label:"Decode speed against memory offset",marks:[{x:1400,c:"var(--base)",t:"100 W saved +1400"},{x:2300,c:"var(--ok)",t:"120 W saved +2300"}]});
+lineChart($("#occore"),[{...A,p:coreRun1},{...B,p:coreRun2}],{xmax:150,xstep:15,ymin:42,ymax:52,xl:"core offset",label:"Decode speed against core offset",marks:[{x:135,c:"var(--bad)",t:"+135 fails"}]});
+$("#oclegend").innerHTML=`<span style="--c:var(--base)">100 W run, memory +1400 at the core sweep</span><span style="--c:var(--cfg)">120 W run, memory +2300 at the core sweep</span>`;
+$$("#runseg button").forEach(b=>b.onclick=()=>{runSel=b.dataset.r;applyRun()});applyRun();
+function accList(host,items){items.forEach(([t,body],i)=>{const a=el("div","acc");const h=el("button","ahead",`<span class="chev">&#9656;</span><h3>${t}</h3>`);h.dataset.acc="";h.setAttribute("aria-expanded","false");
+  const f=el("div","fold"),n=el("div"),b=el("div","abody");b.innerHTML=body;n.append(b);f.append(n);a.append(h,f);host.append(a)})}
+accList($("#ocacc"),OC_ACC);
+accList($("#portacc"),PORT_ACC);
+$$(".code").forEach(c=>{const b=el("button","copy","Copy");b.onclick=()=>{const t=c.dataset.t;const ok=()=>{b.textContent="Copied";b.classList.add("done");setTimeout(()=>{b.textContent="Copy";b.classList.remove("done")},1400)};
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(ok,()=>{const r=document.createRange();r.selectNodeContents(c.firstChild);const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Selected"})};c.append(b)});
+
+/* tabs */
+const TABS=["overview","changes","overclock","port"];
+function show(t,push=true){
+  TABS.forEach(n=>{$("#r-"+n).hidden=n!==t});
+  $$(".tab").forEach(b=>{const on=b.dataset.t===t;b.setAttribute("aria-selected",on);if(on){const ink=$("#ink");ink.style.width=b.offsetWidth+"px";ink.style.transform=`translateX(${b.offsetLeft}px)`;b.scrollIntoView({block:"nearest",inline:"nearest"})}});
+  if(t==="overview")animateVital();
+  if(t==="overclock")applyRun();
+  if(push){try{history.replaceState(null,"","#"+t)}catch(e){}window.scrollTo({top:0,behavior:"auto"})}
+}
+$$(".tab").forEach(b=>b.onclick=()=>show(b.dataset.t));
+addEventListener("resize",()=>show(TABS.find(n=>!$("#r-"+n).hidden),false));
+const h=(location.hash||"").slice(1);
+if(TABS.includes(h))show(h,false);else if(/^[A-Z]\d$/.test(h)){goChange(h)}else show("overview",false);
+document.fonts&&document.fonts.ready.then(()=>show(TABS.find(n=>!$("#r-"+n).hidden),false));
+</script>
+</body>
+</html>

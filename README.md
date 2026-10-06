@@ -1,3 +1,152 @@
+<div align="center">
+
+# Oddly-llama.cpp: `local-1660ti`
+
+**llama.cpp tuned for a 6 GB GTX 1660 Ti and a Ryzen 5 7600X.** Every change here was measured on that one machine, then kept or dropped on the numbers.
+
+![branch](https://img.shields.io/badge/branch-local--1660ti-0b7a75)
+![gpu](https://img.shields.io/badge/GPU-GTX%201660%20Ti%206%20GB-76b900?logo=nvidia&logoColor=white)
+![cpu](https://img.shields.io/badge/CPU-Ryzen%205%207600X-ed1c24?logo=amd&logoColor=white)
+![measured](https://img.shields.io/badge/measured-2026--10--06-3b5bdb)
+
+<img src="local-tune/img/speedups.svg" alt="Speed-up of each kept change: 9B code edit 7.0x, 3B code edit 3.2x, 7B at 15K context 1.81x, 7B empty context 1.53x, 7B clocks 1.16x, 9B 1.16x and 1.15x" width="860">
+
+[Full report](local-tune/report.html) · [Change log with code](local-tune/README.md) · [Every trial](local-tune/TRIALS.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
+
+</div>
+
+> [!NOTE]
+> This README describes the `local-1660ti` branch only. The text under "Upstream README" is the unchanged fork README. Numbers are single passes of 3 repetitions on one card; differences under about 3% are noise.
+
+## What is different on this branch
+
+| # | Change | Effect | Where |
+|---|---|---|---|
+| 1 | CUDA: stop using tensor-core kernels on GTX 16xx (no tensor cores, only emulated) | prompt reading 2.9x to 4.2x faster | [change 1](local-tune/README.md#change-1-gtx-16xx-kernel-selection) |
+| 2 | qwen35: skip the fused raw-gate GDN path on CPU layers (x86) | 9B hybrid and CPU decode 20-35% faster | [change 2](local-tune/README.md#change-2-qwen35-gdn-path-on-cpu-layers) |
+| 3 | CUDA: build the q8_0 K / q4_0 V attention pair by default | 7B fits all layers at 16K, writing 11-16% faster | [change 3](local-tune/README.md#change-3-q8_0-k--q4_0-v-attention-pair) |
+| 4 | Runtime settings: more GPU layers, `ngram-simple` speculative decoding | 9B code edits 7.0x, 3B 3.2x; 7B +37% to +57% | [trials 2](local-tune/TRIALS.md) |
+| 5 | GPU overclock (memory +2300, core +105, 120 W), found by an automated stability sweep | 7B decode 43.8 to 50.7 t/s | [overclock](#overclock-found-by-script-checked-by-perplexity) |
+
+<details>
+<summary><b>All 19 measured changes of 2026-10-06, with verdicts</b></summary>
+
+<br>
+
+| # | Time | Change | Verdict | Headline |
+|---|---|---|---|---|
+| A1 | 01:47-02:12 | GPU layers after the display moved to the iGPU | Applied | 9B +15% at 0K, 7B +37% at 0K |
+| A2 | 02:18-02:32 | ngram-simple speculative decoding on code edits | Applied | 9B edit 7.0x, 3B edit 3.2x, open question unchanged |
+| A3 | 02:18 | ngram-simple lookup length and map variants | No gain | defaults kept |
+| A4 | 02:26 | Draft-model speculative decoding (draft-simple) | No-go | best 1.7x on code, up to 68% slower elsewhere |
+| A5 | 01:47-01:53 | Fusion disabled (GGML_CUDA_DISABLE_FUSION=1) | No-go | decode 1-9% slower |
+| A6 | 01:51-01:54 | Larger physical batch (-ub 1024 / 2048) | No gain | +1.5-3% for 70-900 MiB of VRAM |
+| A7 | 01:56 | Host-side switches on the 9B hybrid | No gain | all within 20.5-21.3 t/s |
+| A8 | 02:20-02:21 | GGML_CUDA_GRAPH_OPT=1 under server load | No gain | 139.4 vs 139.2 t/s |
+| B1 | 09:12-09:57 | KV cache: K at q8_0, V at q4_0 on the 7B | Applied | +11% at 0K, +16% at 15K, perplexity +0.02 |
+| B2 | 09:39 | K at q4_0 on the 7B | No-go | perplexity 8.17 to 1534 |
+| B3 | 10:03-10:12 | KV mixing and --fit on the 9B / 7B | No gain | 9B perplexity flat across KV types; --fit needs -fitt 512 |
+| C1 | 11:20 | ik_llama.cpp as an upper bound | No-go | prompt reading 3.6x slower, writing equal or slower |
+| C2 | 11:28-11:36 | DFlash draft head for the 9B | No-go | 1.8x over a slow baseline, nothing over a layer count |
+| D1 | 12:11-12:19 | 9B at -ngl 26 / 27 with K q8_0, V q4_0, 16K context | Not applied | -ngl 26 stable, +4% at 0K; not applied |
+| D2 | 12:24 | ngram-simple lookup n=24 on the 7B, 2000-token answers | Not applied | 2.2x on edit with the same text; refactor still differs |
+| E1 | 12:29-12:39 | System switches: power limit, locked clocks, memory offset, huge pages | No gain | none beat the stock run; 100 W costs 1-3% |
+| F1 | 12:50-13:22 | Overclock, first sweep at a 100 W limit | Saved | 43.8 to 47.5 t/s (+8%), memory to +1500 cap, core limit +120 |
+| F2 | 13:25-13:46 | Overclock resumed at 120 W, upward only | Saved | 50.7 t/s, +16% over stock at 100 W; saved mem +2300, core +105 |
+| G1 | 13:56 | Full local-model benchmark, current state | Reference | +5-14% over the 11:21 run, probably from the overclock |
+
+Verdicts: **Applied** is in the gateway settings or the build. **Saved** is a stored overclock state. **No gain** and **No-go** were measured and dropped. **Not applied** worked but was left out with a reason, see [TRIALS.md](local-tune/TRIALS.md).
+
+</details>
+
+## Overclock, found by script, checked by perplexity
+
+Raising GPU clocks can corrupt output silently, so a speed number alone proves nothing. [`gpu-push.py`](local-tune/gpu-push.py) raises one offset at a time and judges every step on five checks, then runs a soak test before it saves anything.
+
+```mermaid
+flowchart LR
+    A[Stock baseline<br/>3 runs, same perplexity] --> B[Raise memory offset<br/>one step]
+    B --> C{Step passes?}
+    C -- yes --> B
+    C -- no --> D[Back off one step]
+    D --> E[Raise core offset<br/>one step]
+    E --> F{Step passes?}
+    F -- yes --> E
+    F -- no --> G[Back off one step]
+    G --> H[Soak 10 min]
+    H -- pass --> I[(Save gpu-oc.json)]
+    H -- fail --> J[Step down, soak again]
+```
+
+<img src="local-tune/img/overclock.svg" alt="Decode speed against memory and core offset for the 100 W and 120 W runs. Core +135 failed in both." width="860">
+
+| | Stock, 100 W | Saved |
+|---|---|---|
+| 7B decode, 4K context | 43.8 t/s | **50.7 t/s (+16%)** |
+| Memory offset | 0 (6001 MHz) | +2300 (6900 MHz) |
+| Core offset | 0 | +105 (limit +120, +135 fails) |
+| Power limit | 100 W | 120 W (range 70-120 W) |
+| Soak | | 14 of 14 passes, perplexity 12.8239 every time, 73-75 C |
+
+<details>
+<summary><b>How a step is judged, and what the two runs did</b></summary>
+
+<br>
+
+- Clean exit, and no new `NVRM: Xid` line in the kernel log.
+- Perplexity equal to the stock value digit for digit. The run is deterministic, so one flipped bit moves it. Core +135 failed this way in both runs (12.8248, then 12.8234).
+- Decode speed not under 93% of the best so far, because GDDR6 retries bad transfers and that shows as lost speed before it shows as errors.
+- Temperature under 83 C. A hang or timeout counts as a failure.
+
+1. **100 W run.** Memory reached its +1500 cap with no limit found, core stopped at +120. Saved +1400 / +105 after 13 soak passes: 43.8 to 47.5 t/s (+8%).
+2. **120 W run, `--resume`.** Re-verified the saved pair, raised the power limit, then swept upward only. The pair held at 49-50 t/s (about +5% from the power limit alone), memory went to +2400 with no failure. Saved +2300 / +105 after 14 soak passes.
+
+Offsets live in the driver only: a reboot or a crash returns them to 0, and a hard hang needs the power button. The state file is written only after the final soak passes. It is per machine and not tracked in git.
+
+</details>
+
+<details>
+<summary><b>Run it on your own GPU</b></summary>
+
+<br>
+
+```sh
+python3 local-tune/gpu-push.py --mem-max 1500 --core-max 300 --power 120   # first run
+python3 local-tune/gpu-push.py --resume --power 120 --mem-max 2400         # later, upward only
+python3 local-tune/gpu-push.py apply                                       # after each reboot
+python3 local-tune/gpu-push.py reset                                       # back to stock
+```
+
+It needs the proprietary NVIDIA driver, `sudo`, a GGUF that fits in VRAM and a fixed text file for the perplexity check. [`local-tune/oc-kit/AGENT.md`](local-tune/oc-kit/AGENT.md) lists every hardcoded value to change for another machine, written so an AI agent can make the edits. It can hang the machine, so save your work first.
+
+</details>
+
+## Where the speed came from, in one table
+
+| Setting | Before | After | Why it works |
+|---|---|---|---|
+| 9B code edit, `--spec-type ngram-simple` | 24.1 t/s | 169.6 t/s | Copies text the model already wrote. Output matched the run without it. |
+| 7B, 15K context | 18.2 t/s | 32.9 t/s | All layers on the GPU plus K at q8_0 and V at q4_0 frees about 130 MiB at 16K. |
+| 7B, K at q4_0 | perplexity 8.17 | 1534 | Rejected. Quantising K below 8 bits breaks this model. |
+| Draft-model speculation | 88.4 t/s | 28.3-72.4 t/s | Rejected. 18-68% slower on open questions. |
+| ik_llama.cpp | 3036 t/s prompt | 844 t/s | Rejected. No gain over this tree. |
+
+<details>
+<summary><b>Reproduce and keep it healthy</b></summary>
+
+<br>
+
+- `python3 local-tune/lab.py auto` reruns the checks that cover a source file when it changes and rewrites the results page.
+- `local-tune/bench.sh <build-dir> <label>` runs the four standard models; `compare.py`, `ppl.py` and `spectest.py` run A/B, perplexity and server-side trials. See [local-tune/README.md](local-tune/README.md#reproduce).
+- `python3 local-tune/watch.py` is the live terminal view of whatever run is newest.
+- The interactive [report](local-tune/report.html) has the same data with expandable changes and hover charts. Open it locally in a browser, or through an HTML previewer such as `https://htmlpreview.github.io/?https://github.com/TheCascadian/Oddly-llama.cpp/blob/local-1660ti/local-tune/report.html`.
+
+</details>
+
+---
+
+# Upstream README
+
 # llama.cpp
 
 > [!IMPORTANT]
