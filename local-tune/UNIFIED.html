@@ -233,8 +233,9 @@ function fold(head,body,cls){const d=el("div",cls||"vrow");const b=el("button","
 /* ---- tabs ---- */
 const ROOMS=[["overview","Overview"],["context","Context"],["changes","Changes"],["exp","Experiments"],["run","Run it"]];
 const tabs=$("#tabs");const ink=el("span","ink");tabs.appendChild(ink);
-ROOMS.forEach(([id,n],i)=>{const b=el("button","tab",n);b.setAttribute("role","tab");b.dataset.id=id;b.onclick=()=>show(id);tabs.insertBefore(b,ink)});
-function show(id){$$(".room").forEach(r=>r.hidden=r.id!=="r-"+id);$$(".tab").forEach(t=>{const s=t.dataset.id===id;t.setAttribute("aria-selected",s);if(s){ink.style.width=t.offsetWidth+"px";ink.style.transform=`translateX(${t.offsetLeft}px)`}});try{history.replaceState(null,"","#"+id)}catch(e){}scrollTo(0,0)}
+ROOMS.forEach(([id,n],i)=>{const b=el("button","tab",n);b.setAttribute("role","tab");b.dataset.id=id;b.onclick=()=>show(id,true);tabs.insertBefore(b,ink)});
+function moveInk(){const t=$('.tab[aria-selected="true"]');if(t){ink.style.width=t.offsetWidth+'px';ink.style.transform=`translateX(${t.offsetLeft}px)`}}
+function show(id,top){$$(".room").forEach(r=>r.hidden=r.id!=="r-"+id);$$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.id===id));moveInk();try{history.replaceState(null,"","#"+id)}catch(e){}if(top)scrollTo(0,0)}
 /* ---- overview ---- */
 STATS.forEach(([k,n,s])=>$("#stats").appendChild(el("div","",`<span class=k>${k}</span><span class=n>${n}</span><span class=s>${s}</span>`)));
 const max=Math.max(...SPEED.map(r=>r[2]/r[1]));
@@ -271,8 +272,8 @@ HYP.forEach(([id,c,t,n])=>$("#hyp").appendChild(el("div","vrow",`<div class=vbtn
 REJ.forEach(([t,n])=>$("#rej").appendChild(el("div","vrow",`<div class=vbtn style="cursor:default"><div class=vtop><span>${t}</span><span class=nums>${n}</span></div></div>`)));
 DIRS.forEach(([a,b])=>$("#dirs").appendChild(el("div","vrow",`<div class=vbtn style="cursor:default"><div class=vtop><span class=mono>${a}</span><span class=nums>${b}</span></div></div>`)));
 TODO.forEach(([a,b])=>$("#todo").appendChild(el("div","vrow",`<div class=vbtn style="cursor:default"><div class=vtop><b>${a}</b><span class=nums>${b}</span></div></div>`)));
-addEventListener("resize",()=>show(($(".room:not([hidden])")||{id:"r-overview"}).id.slice(2)));
+addEventListener("resize",moveInk);
 show((location.hash||"#overview").slice(1).replace(/[^a-z]/g,"")||"overview");
-document.fonts&&document.fonts.ready.then(()=>show(($(".room:not([hidden])")).id.slice(2)));
+document.fonts&&document.fonts.ready.then(moveInk);
 </script>
 </body></html>
