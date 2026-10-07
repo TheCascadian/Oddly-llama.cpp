@@ -9,8 +9,8 @@
   "threads": 12,
   "ram_gb": 62,
   "kernel": "6.18.52-1-cachyos-lts",
-  "commit": "f1e7c17df",
-  "branch": "local-1660ti",
+  "commit": "648f6c3f7",
+  "branch": "master",
   "gpu": "GTX 1660 Ti",
   "vram_mb": 6144,
   "driver": "615.71.09",
@@ -564,6 +564,31 @@
   ]
  ],
  "commits": [
+  [
+   "648f6c3f7",
+   "10-07 04:31",
+   "local-tune: group results by family (throughput, kv, speculative, quality, profiling, context, hardware, suites, lab)"
+  ],
+  [
+   "d1f4e46c9",
+   "10-07 04:31",
+   "local-tune: move scripts to scripts/ and config files to config/ (paths fixed in the next commits)"
+  ],
+  [
+   "6316d717c",
+   "10-07 04:28",
+   "local-tune: snapshot before consolidation - discovery report, profiling tools, context probe, round 1-2 results"
+  ],
+  [
+   "d954ac6f4",
+   "10-06 17:40",
+   "Edit .gitignore to clean repo"
+  ],
+  [
+   "b47645cdd",
+   "10-06 17:33",
+   "README: rename to Wrekt-llama.cpp, link llama.cpp and Oddly-llama.cpp, add the model and guard results, fold the upstream README"
+  ],
   [
    "f1e7c17df",
    "10-06 17:23",

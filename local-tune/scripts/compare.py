@@ -78,30 +78,38 @@ def render(name):
         if m and cur:
             peak[cur] = max(peak.get(cur, 0), int(m[1])); ram = int(m[2]); lowram[cur] = min(lowram.get(cur, 10**9), ram)
     finished = any("ALLDONE" in l for l in log)
-    L = [f"{B}  KERNEL COMPARISON{X}  {D}{title}{X}", f"  {D}llama-bench {args}{X}", ""]
-    mark = {"done": f"{G}✔{X}", "run": f"{Y}▶{X}", "wait": f"{D}.{X}"}
-    L.append(f"  {B}STEPS{X}  {D}" + ("all finished" if finished else f"step {min(len(done) + 1, len(variants))} of {len(variants)}") + X)
-    L.append("")
+    stamps = [l[:8] for l in log if re.match(r"\d\d:\d\d:\d\d (START|DONE|ALLDONE)", l)]
+    el = (watch.secs(time.strftime("%H:%M:%S")) - watch.secs(stamps[0])) % 86400 if stamps else 0
+    last = max((i for i, l in enumerate(log) if " START " in l), default=0)
+    part = sum(1 for l in log[last:] if " TEST " in l) / max(len(tests), 1) if cur and cur not in done else 0
+    frac = (len(done) + min(part, 0.99)) / max(len(variants), 1)
+    ACT = watch.ACT
+    L = [f"{watch.HEAD}  KERNEL COMPARISON{X}  {D}{title}{X}", "", watch.progress(frac, el, finished), ""]
     for i, v in enumerate(variants, 1):
         st = "done" if v[0] in done else ("run" if v[0] == cur else "wait")
-        text = f"{v[0]:<28}{D}{v[2] or 'no env vars'}{X}"
-        L.append(f"  {mark[st]} {i}  " + (f"{B}{text}{X}" if st == "run" else text))
+        if st == "run":
+            L.append(f"  {ACT}▶ {i}  {v[0]:<28}{part * 100:.0f}% of tests{X}")
+        elif st == "done":
+            L.append(f"  {G}✔ {i}  {v[0]}{X}")
+        else:
+            L.append(f"  {D}· {i}  {v[0]}{X}")
     L += [""] + watch.gpu_panel(ram) + [""]
-    L += [f"  {B}RESULTS{X}  {D}tokens/sec, higher is better. Each value is the average of the repetitions, +/- is their spread. @Nk = N thousand tokens already in context{X}", ""]
+    L += [f"  {watch.HEAD}RESULTS{X}  {D}tokens/s, higher is better, ± spread{X}", ""]
     W = 15
-    hdr = f"  {'Variant':<28}|" + "".join(f"{t}@{d // 1024}k".rjust(W) for t, d in tests) + f" | {'Peak VRAM':<10}{'Low RAM':<10}Errors"
-    L += [f"{B}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
+    hdr = f"  {'Variant':<28}|" + "".join(f"{t}@{d // 1024}k".rjust(W) for t, d in tests) + f" | {'Peak VRAM':<10}Errors"
+    L += [f"{watch.HEAD}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
     for v in variants:
         cells = ""
         for t in tests:
             x = res.get((v[0], t))
             cells += f"{G}{x[0]:8.1f}{X}{D} ±{x[1]:<5.1f}{X}" if x else (f"{RED}{'FAIL':>{W}}{X}" if v[0] in bad and v[0] in done else f"{D}{'.':>{W}}{X}")
         pk = f"{peak[v[0]]} MiB" if v[0] in peak else "-"
-        lr = f"{lowram[v[0]]} MB" if v[0] in lowram else "-"
-        err = f"{RED}{bad[v[0]]}{X}" if v[0] in bad else (f"{G}none{X}" if v[0] in done else "")
-        L.append(f" {Y + chr(0x25b6) + X if v[0] == cur and not finished else ' '}{v[0]:<28}|{cells} | {pk:<10}{lr:<10}{err}")
+        err = f"{RED}{bad[v[0]]}{X}" if v[0] in bad else ""
+        active = v[0] == cur and not finished
+        row = f"{'▶' if active else ' '}{v[0]:<28}|{cells} | {pk:<10}{err}"
+        L.append(" " + (ACT + row.replace(X, X + ACT) + X if active else row))
     L += [""] + watch.render_timing(log)
-    L += [f"  {D}. = not run yet   FAIL = did not complete   Ctrl+C closes this view; the benchmark keeps running.{X}"]
+    L += [f"  {D}. not run   FAIL did not complete   Ctrl+C closes the view, the run continues{X}"]
     return "\n".join(L), finished
 
 

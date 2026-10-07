@@ -1,0 +1,12 @@
+title: qwen35-4b context ceiling: KV pairs, -ub 512 and 128, forced vector kernel, key recall at every step
+args: -fa on --parallel 1 -cram 0 --no-mmproj
+f16/f16 ub512 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk f16 -ctv f16 -ub 512 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+q8_0/q8_0 ub512 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q8_0 -ub 512 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+q8_0/q4_0 ub512 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -ub 512 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+q4_0/q4_0 ub512 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q4_0 -ctv q4_0 -ub 512 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+f16/f16 ub128 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk f16 -ctv f16 -ub 128 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+q8_0/q8_0 ub128 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q8_0 -ub 128 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+q8_0/q4_0 ub128 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -ub 128 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+q4_0/q4_0 ub128 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q4_0 -ctv q4_0 -ub 128 NOCOPY  | 32768,65536,98304,114688,131072,163840,196608,262144
+vec q8_0/q4_0 ub512 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -ub 512 NOCOPY ENV:GGML_CUDA_FATTN_VEC_ALL=1 | 32768,65536,98304,114688,131072,163840,196608,262144
+vec q4_0/q4_0 ub128 | build-allq | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q4_0 -ctv q4_0 -ub 128 NOCOPY ENV:GGML_CUDA_FATTN_VEC_ALL=1 | 32768,65536,98304,114688,131072,163840,196608,262144

@@ -9,6 +9,7 @@ from paths import RESULTS as R, rp, rfiles
 CONFIGS = [(k, n) for k in ("f16", "q8_0", "q4_0") for n in (0, 1)]
 DEPTHS = (0, 8192, 16384)
 G, Y, RED, C, D, B, X = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[1m", "\033[0m"
+ACT, HEAD = "\033[1;38;5;213m", "\033[1;36m"   # active run: bold pink; section headings: bold cyan
 
 
 def read(name):
@@ -82,6 +83,21 @@ def bar(frac, width=24, color=C):
     return f"{color}{'█' * n}{D}{'░' * (width - n)}{X}"
 
 
+def clock(sec):
+    return time.strftime("%H:%M", time.localtime(time.time() + sec))
+
+
+def progress(frac, elapsed, finished=False, width=30):
+    """One line: bar, percent, elapsed, time left and the clock time it should end."""
+    frac = max(0.0, min(1.0, frac))
+    if finished:
+        return f"  {bar(1, width, G)} {G}{B}done{X}  {D}took {dur(int(elapsed))}{X}"
+    if frac <= 0.02:
+        return f"  {bar(frac, width, ACT)} {B}{frac * 100:3.0f}%{X}  {D}{dur(int(elapsed))} elapsed{X}"
+    left = elapsed / frac * (1 - frac)
+    return f"  {bar(frac, width, ACT)} {B}{frac * 100:3.0f}%{X}  {D}{dur(int(elapsed))} elapsed{X}  {ACT}~{dur(int(left))} left{X}  {D}ends {clock(left)}{X}"
+
+
 def heat(v, lo, hi):
     return G if v < lo else (Y if v < hi else RED)
 
@@ -133,11 +149,11 @@ def render_timing(log):
     if not any(r[1] is not None or r[2] for r in rows):
         return []
     depths = sorted({d for r in rows for d in r[2]})
-    L = [f"  {B}TIME{X}  {D}how long each row took, split by tokens already in context. Each part includes loading the model or filling the context{X}", ""]
+    L = [f"  {HEAD}TIME{X}", ""]
     def line(c1, parts, tot):
         return f"  {c1:<28}|" + "".join((dur(parts[d]) if d in parts else ".").rjust(10) for d in depths) + f" |{tot:>11}"
     hdr = f"  {'Row':<28}|" + "".join(f"@{d // 1024}k".rjust(10) for d in depths) + f" |{'Row total':>11}"
-    L += [f"{B}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
+    L += [f"{HEAD}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
     for label, tot, parts in rows:
         L.append(line(label[:27], parts, dur(tot) if tot is not None else "running"))
     allp = {d: sum(r[2].get(d, 0) for r in rows) for d in depths if any(d in r[2] for r in rows)}
@@ -220,17 +236,15 @@ def render_bench(st):
 
 def gpu_panel(ram="-"):
     g = gpu()
-    L = [f"  {B}GPU LIVE{X}"]
+    L = [f"  {HEAD}GPU{X}"]
     if g:
         HIST.append(g[0]); del HIST[:-40]
         used, tot = g[2], g[3]
         spark = "".join(SPARK[min(8, int(u / 100 * 8.99))] for u in HIST)
-        L += [f"  Video memory  {bar(used / tot, 24, heat(used / tot, .7, .9))} {B}{used:.0f}{X} / {tot:.0f} MiB",
-              f"  GPU busy      {bar(g[0] / 100, 24, heat(g[0], 101, 101))} {B}{g[0]:.0f}%{X}   {D}history{X} {C}{spark}{X}",
-              f"  Memory busy   {bar(g[1] / 100, 24)} {B}{g[1]:.0f}%{X}",
-              f"  Power         {bar(g[5] / max(g[6], 1), 24, heat(g[5] / max(g[6], 1), .8, .95))} {B}{g[5]:.0f}{X} / {g[6]:.0f} W",
-              f"  Temperature   {heat(g[4], 70, 83)}{g[4]:.0f} °C{X}      Fan {g[12]:.0f}%      Core clock {B}{g[7]:.0f}{X}/{g[8]:.0f} MHz      Mem clock {g[9]:.0f} MHz",
-              f"  PCIe link     Gen{g[10]:.0f} x{g[11]:.0f}      {D}System RAM free:{X} {B}{ram} MB{X}"]
+        pw = g[5] / max(g[6], 1)
+        L += [f"  VRAM   {bar(used / tot, 20, heat(used / tot, .7, .9))} {B}{used:.0f}{X}{D}/{tot:.0f} MiB{X}   {D}RAM free{X} {B}{ram}{X}{D} MB{X}",
+              f"  Busy   {bar(g[0] / 100, 20)} {B}{g[0]:.0f}%{X}  {C}{spark}{X}",
+              f"  Power  {bar(pw, 20, heat(pw, .8, .95))} {B}{g[5]:.0f}{X}{D}/{g[6]:.0f} W{X}   {heat(g[4], 70, 83)}{g[4]:.0f} °C{X}   {B}{g[7]:.0f}{X}{D}/{g[8]:.0f} MHz core, {g[9]:.0f} mem{X}"]
     else:
         L.append("  (nvidia-smi unavailable)")
     return L
@@ -244,13 +258,8 @@ def render(stem="kvmatrix", st=()):
     n = len(done)
     stamps = [l[:8] for l in log if re.match(r"\d\d:\d\d:\d\d (START|DONE)", l)]
     el = eta = ""
-    if stamps:
-        e = (secs(time.strftime("%H:%M:%S")) - secs(stamps[0])) % 86400
-        el = f"{e // 60}m{e % 60:02d}s"
-        if n and not finished:
-            r = e / n * (6 - n)
-            eta = f"   ~{int(r // 60)}m left"
-    L = [f"{B}  KV-CACHE BENCHMARK{X}  {D}DeepSeek-R1 7B Q4_K_S  ·  {machine()}{X}", ""]
+    e = (secs(time.strftime("%H:%M:%S")) - secs(stamps[0])) % 86400 if stamps else 0
+    L = [f"{HEAD}  KV-CACHE BENCHMARK{X}  {D}R1 7B Q4_K_S  ·  {machine()}{X}", ""]
     live = next((x for x in st if x[4] == "run"), None)
     if st and stem == "kvmatrix":
         if not (live and live[0] == "kv" and mtime("kvmatrix.log") > max([mtime(f"{x[1]}.csv" if x[0] == "bench" else f"kvmatrix-{x[1]}.csv") for x in st if x[4] == "done"] or [0])):
@@ -258,26 +267,26 @@ def render(stem="kvmatrix", st=()):
         L += render_steps(st, n)
     state = f"{G}✔ ALL DONE{X}" if finished else (f"{Y}● running: {cur[0]} KV in {'RAM' if cur[1] else 'GPU'}{X}" if cur else "starting…")
     if not st:
-        L += [f"  Progress  {bar(n / 6, 30)} {B}{n}/6{X}  {state}", f"  Elapsed   {el}{eta}", ""]
+        L += [f"  {state}", progress(n / 6, e if stamps else 0, finished), ""]
     L += gpu_panel(ram)
     L.append("")
     if st and not (live and live[0] == "kv") and stem == "kvmatrix":
         return "\n".join(L + render_bench(st) + [f"  {D}Ctrl+C closes this view; the benchmark keeps running.{X}"])
-    L += [f"  {B}RESULTS{X}  {D}tokens/sec, higher is better. pp = reading prompt, tg = writing answer, @Nk = N thousand tokens already in context{X}", ""]
+    L += [f"  {HEAD}RESULTS{X}  {D}tokens/s, higher is better{X}", ""]
     # one column spec shared by header, rule and rows => identical widths
     C1, C2, C3 = 9, 7, 11  # KV type, Cache in, Peak VRAM
     def line(c1, c2, nums, c3, mark=" "):
         return f" {mark}{c1:<{C1}}{c2:<{C2}}|" + "".join(nums) + f" | {c3:<{C3}}"
     hdr = line("KV type", "Cache", [f"{t}@{d // 1024}k".rjust(W) for t in ("pp", "tg") for d in DEPTHS], "Peak VRAM")
-    L += [f"{B}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
+    L += [f"{HEAD}{hdr}{X}", " " + "─" * (len(hdr) - 1)]
     for kv, nk in CONFIGS:
         bad = (kv, nk) in failed
-        m = f"{Y}▶{X}" if cur == (kv, nk) and not finished else " "
+        m = f"{ACT}▶{X}" if cur == (kv, nk) and not finished else " "
         nums = [cell(res.get((kv, nk, t, d)), bad) for t in ("pp", "tg") for d in DEPTHS]
         pk = f"{peak[(kv, nk)]:.0f} MiB" if (kv, nk) in peak else "-"
         L.append(line(kv, "RAM" if nk else "GPU", nums, pk, m))
     L += [""] + render_timing(log)
-    L += [f"  {D}. = not run yet   FAIL = out of memory   Ctrl+C closes this view; the benchmark keeps running.{X}"]
+    L += [f"  {D}. not run   FAIL out of memory   Ctrl+C closes the view, the run continues{X}"]
     return "\n".join(L)
 
 

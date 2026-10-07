@@ -132,6 +132,11 @@ GTX 16xx reports compute capability 7.5 like RTX 20xx but has no tensor cores, s
 | R1-distill-7B Q4_K_S GPU | 168 | 690 | 4.1x |
 | Qwythos-9B Q4_K_M ngl 22 | 156 | 500 | 3.2x |
 | Qwythos-9B Q4_K_M CPU | 140 | 401 | 2.9x |
+| qwen3.5-4b Q4_K_M GPU (`-ngl 99 -fa 1`) | 317 | 1021 | 3.2x |
+| gemma4-e2b UD-Q4_K_XL GPU | 564 | 2169 | 3.8x |
+| MiniCPM5-2B Q4_K_M GPU | 557 | 2021 | 3.6x |
+
+The three small-model rows were run 2026-10-07 (`throughput/compare-ks-*`: new, old, new, old, 3 repetitions each, `build-exp` against `build-base`); their writing speed (tg128) also rose: 4B 80.2 to 80.6 (noise), gemma4-e2b 143.1 to 149.0 (+4%), MiniCPM5-2B 138.5 to 145.3 (+5%). Perplexity and `test-backend-ops` were not repeated for them.
 
 Other effects: writing in short chat unchanged (-1% to +3%); long chat q8_0/q4_0 KV on GPU unchanged within noise (-6% to +9%, median -2%); f16 KV on GPU at 8K 7% slower (42.0 vs 45.0 t/s, the one cost); KV in RAM (`-nkvo 1`) unchanged (-4% to +2%); out-of-memory stops with f16 KV at 8K: 0 in 9 runs; perplexity equal within error; `test-backend-ops -o FLASH_ATTN_EXT` passes.
 
@@ -688,7 +693,7 @@ Moved to [HISTORY.md](HISTORY.md) (22 commits from `52b730eb4` on 2026-10-05 19:
 
 | Experiment | 1.3B | 3B | 4B (qwen3.5) | 7B | 9B | Small 2B-class (gemma4-e2b, MiniCPM) |
 |---|---|---|---|---|---|---|
-| GTX 16xx kernel selection (change 1) | ✔ | ✔ | ○ | ✔ | ✔ (GPU and CPU) | ○ |
+| GTX 16xx kernel selection (change 1) | ✔ | ✔ | ✔ (3.2×) | ✔ | ✔ (GPU and CPU) | ✔ (3.6–3.8×) |
 | GDN CPU path (change 2) | ✔ (no effect) | ✔ (no effect) | ○ (qwen35 model) | – | ✔ | – |
 | q8_0 K / q4_0 V pair | ○ | ○ | ◐ (q8/q8 context run only) | ✔ | ◐ (perplexity, no speed gain) | ○ |
 | GPU layer count / placement | – | – | ○ | ✔ | ✔ (E1, S1, S3) | – |

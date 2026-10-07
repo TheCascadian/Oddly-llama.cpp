@@ -1,0 +1,6 @@
+title: GTX 16xx kernel selection, new build against old build, back to back  (MiniCPM5-2B Q4_K_M)
+args: -m /home/wrekt/odysseus-local/models/MiniCPM5-2B-Q4_K_M.gguf -ngl 99 -t 6 -fa 1 -p 512 -n 128 -r 3
+new build | build-exp | |
+old build | build-base | |
+new build again | build-exp | |
+old build again | build-base | |
