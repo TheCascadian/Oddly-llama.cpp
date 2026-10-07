@@ -5,9 +5,9 @@ compare.py <name>        live view of that run
 Plan lines: "title: text", "args: common llama-bench args", then one variant per line: "label | build-dir | ENV=1 ... | extra args"."""
 import csv, os, re, subprocess, sys, threading, time
 import watch
-from watch import G, Y, RED, C, D, B, X, R
+from watch import G, Y, RED, C, D, B, X
+from paths import rp, ROOT, SCRIPTS
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def plan(name):
@@ -24,8 +24,8 @@ def plan(name):
 
 def run(name):
     _, args, variants = plan(name)
-    out = open(os.path.join(R, f"compare-{name}.csv"), "w")
-    log = open(os.path.join(R, f"compare-{name}.log"), "w")
+    out = open(rp(f"compare-{name}.csv"), "w")
+    log = open(rp(f"compare-{name}.log"), "w")
     def say(msg):
         log.write(f"{time.strftime('%T')} {msg}\n"); log.flush()
     t0 = time.time()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Speculative decoding A/B on llama-server (llama-bench cannot test it).
-usage: local-tune/spectest.py <build-dir> <label> <model.gguf> <server args...>   (run from repo root)
-live view: local-tune/watch.py (newest run) or local-tune/watch.py <label>
+usage: local-tune/scripts/spectest.py <build-dir> <label> <model.gguf> <server args...>   (run from repo root)
+live view: local-tune/scripts/watch.py (newest run) or local-tune/scripts/watch.py <label>
 Runs the server once per variant, sends each prompt REPS times at temperature 0 with thinking off and writes results/spec-<label>.csv.
 Prompts: "rewrite" repeats a source file with one rename (much repeated text), "free" is an open question (little repeated text),
 "edit" adds a parameter to one function and "refactor" changes every function (both print the full file again).
@@ -12,7 +12,7 @@ import csv, hashlib, json, os, re, subprocess, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
+from paths import ROOT, rp
 PORT, REPS, N_PREDICT = 8299, 3, 400
 VARIANTS = [("none", []), ("ngram-simple", ["--spec-type", "ngram-simple"]), ("ngram-mod", ["--spec-type", "ngram-mod"])]
 CODE = "".join(open(os.path.join(HERE, "watch.py")).readlines()[4:45])
@@ -29,7 +29,7 @@ def plan(label):
     """(title, prompt names, variants, options) from results/spec-<label>.plan; without a plan the three built-in variants on rewrite and free."""
     title, prompts, variants, opts = "", ["rewrite", "free"], [], {"mode": "chat", "parallel": "1", "n_predict": str(N_PREDICT)}
     try:
-        lines = open(os.path.join(HERE, "results", f"spec-{label}.plan")).read().splitlines()
+        lines = open(rp(f"spec-{label}.plan")).read().splitlines()
     except OSError:
         return title, prompts, VARIANTS, opts
     for ln in lines:
@@ -63,7 +63,7 @@ def post(path, body):
 
 def main():
     build, label, model, *args = sys.argv[1:]
-    f = open(os.path.join(HERE, "results", f"spec-{label}.csv"), "w")
+    f = open(rp(f"spec-{label}.csv"), "w")
     out = csv.writer(f)
     out.writerow(["variant", "prompt", "rep", "n_predicted", "tg_tps", "draft_n", "draft_accepted", "text_md5"])
     _, prompts, variants, opts = plan(label)
@@ -72,7 +72,7 @@ def main():
         env = dict(x.split("=", 1) for x in extra if re.match(r"[A-Z0-9_]+=", x))
         extra = [x for x in extra if not re.match(r"[A-Z0-9_]+=", x)]
         cmd = [f"{ROOT}/{build}/bin/llama-server", "-m", model, "--port", str(PORT), "--parallel", str(par)] + args + extra
-        log = open(os.path.join(HERE, "results", f"spec-{label}-{name.replace(' ', '_')}.log"), "w")
+        log = open(rp(f"spec-{label}-{name.replace(' ', '_')}.log"), "w")
         srv = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, PATH="/opt/cuda/bin:" + os.environ["PATH"], **env))
         try:
             for _ in range(120):

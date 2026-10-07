@@ -9,11 +9,10 @@ Suites are in suites.conf: "name | watched paths (globs from the repo root) | st
 Steps: ops:<test-backend-ops op>, compare:<plan name>, ppl:<plan name>, spec:<label>:<model>:<server args>."""
 import csv, glob, hashlib, json, os, re, subprocess, sys, threading, time
 import watch
-from watch import G, Y, RED, C, D, B, X, R
+from watch import G, Y, RED, C, D, B, X
+from paths import rp, ROOT, SCRIPTS, CONFIG
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-STATE = os.path.join(R, "lab-state.json")
+STATE = rp("lab-state.json")
 SHIPPED, CAND = "build-live", "build-exp"
 TARGETS = ["llama-server", "llama-bench", "llama-perplexity", "test-backend-ops"]
 LIMIT = 3.0  # percent; a smaller difference between the two builds counts as no change
@@ -21,7 +20,7 @@ LIMIT = 3.0  # percent; a smaller difference between the two builds counts as no
 
 def suites():
     out = []
-    for ln in open(os.path.join(HERE, "suites.conf")):
+    for ln in open(os.path.join(CONFIG, "suites.conf")):
         p = [x.strip() for x in ln.split("|")]
         if len(p) == 3 and not ln.startswith("#"):
             out.append((p[0], p[1].split(), p[2].split()))
@@ -112,18 +111,18 @@ def run_step(step):
     py = lambda *a: subprocess.run([sys.executable, *a], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if kind == "ops":
         p = subprocess.run([f"{ROOT}/{CAND}/bin/test-backend-ops", "-o", arg], cwd=ROOT, capture_output=True, text=True, errors="replace")
-        open(os.path.join(R, f"lab-ops-{arg}.log"), "w").write(p.stdout + p.stderr)
+        open(rp(f"lab-ops-{arg}.log"), "w").write(p.stdout + p.stderr)
         ok = p.returncode == 0 and "backends passed" in p.stdout
         return ("same" if ok else "fail"), (re.findall(r"\d+/\d+ backends passed", p.stdout) or ["failed"])[-1], {}
     if kind == "compare":
-        py(os.path.join(HERE, "compare.py"), "run", arg)
+        py(os.path.join(SCRIPTS, "compare.py"), "run", arg)
         return judge_compare(arg)
     if kind == "ppl":
-        py(os.path.join(HERE, "ppl.py"), "run", arg)
+        py(os.path.join(SCRIPTS, "ppl.py"), "run", arg)
         return judge_ppl(arg)
     if kind == "spec":
         label, model, args = arg.split(":", 2)
-        py(os.path.join(HERE, "spectest.py"), CAND, label, os.path.expanduser(model), *args.replace("_", " ").split())
+        py(os.path.join(SCRIPTS, "spectest.py"), CAND, label, os.path.expanduser(model), *args.replace("_", " ").split())
         return judge_spec(label)
     return "fail", "unknown step kind", {}
 
@@ -131,7 +130,7 @@ def run_step(step):
 def build(st):
     st["running"] = "build"; st["build"] = {"at": time.time(), "ok": None}; save(st)
     env = dict(os.environ, PATH="/opt/cuda/bin:" + os.environ["PATH"])
-    with open(os.path.join(R, "lab-build.log"), "w") as log:
+    with open(rp("lab-build.log"), "w") as log:
         ok = subprocess.run(["cmake", "--build", CAND, "-j", str(os.cpu_count()), "--target", *TARGETS], cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT).returncode == 0
     st["build"] = {"at": time.time(), "ok": ok}; st["running"] = None; save(st)
     return ok
@@ -160,7 +159,7 @@ def run_suites(names):
         kinds = [v[0] for v in st[n]["steps"].values()]
         st[n]["state"] = next((k for k in ("fail", "slower", "faster") if k in kinds), "same")
         st[n]["at"] = time.time(); save(st)
-    subprocess.run([sys.executable, os.path.join(HERE, "ledger.py")], cwd=ROOT, stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable, os.path.join(SCRIPTS, "ledger.py")], cwd=ROOT, stdout=subprocess.DEVNULL)
 
 
 def stale(st):
@@ -213,7 +212,7 @@ def render(auto):
         for k in steps:
             r = s.get("steps", {}).get(k, ["not run", "", {}])
             L.append(f"    {COL.get(r[0], D)}{WORD.get(r[0], r[0]):<10}{X} {k.split(':')[0] + ':' + k.split(':')[1]:<26}{D}{r[1][:110]}{X}")
-    L += ["", f"  {D}no change = inside {LIMIT:.0f}% of the shipped build. Page: local-tune/ledger.html{X}", ""]
+    L += ["", f"  {D}no change = inside {LIMIT:.0f}% of the shipped build. Page: local-tune/ledger.html (see ledger.py){X}", ""]
     run = st.get("running")
     kind, name = (run.split(":")[0], run.split(":")[1]) if run and run.split(":")[0] in ("compare", "ppl", "spec") else watch.newest()
     if kind != "kv":

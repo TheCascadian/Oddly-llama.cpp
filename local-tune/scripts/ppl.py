@@ -5,9 +5,9 @@ ppl.py <name>        live view of that run
 Plan lines: "title: text", "args: common llama-perplexity args", then one variant per line: "label | build-dir | extra args"."""
 import os, re, subprocess, sys, time
 import watch
-from watch import G, Y, RED, C, D, B, X, R
+from watch import G, Y, RED, C, D, B, X
+from paths import rp, ROOT, SCRIPTS
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def plan(name):
@@ -24,8 +24,8 @@ def plan(name):
 
 def run(name):
     _, args, variants = plan(name)
-    out = open(os.path.join(R, f"ppl-{name}.csv"), "w")
-    log = open(os.path.join(R, f"ppl-{name}.log"), "w")
+    out = open(rp(f"ppl-{name}.csv"), "w")
+    log = open(rp(f"ppl-{name}.log"), "w")
     def say(msg):
         log.write(f"{time.strftime('%T')} {msg}\n"); log.flush()
     t0 = time.time()

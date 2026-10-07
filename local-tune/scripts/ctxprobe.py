@@ -9,9 +9,9 @@ with corpus text and three hidden codes at 10%, 50% and 90%, and must repeat the
 The ctx list is tried in ascending order and a variant stops at its first failure."""
 import csv, json, os, random, re, signal, subprocess, sys, threading, time, urllib.request
 import watch
-from watch import G, Y, RED, C, D, B, X, R
+from watch import G, Y, RED, C, D, B, X
+from paths import rp, ROOT, SCRIPTS
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8811
 FIELDS = "label,ctx,status,fail,vram_base,vram_peak,gpu_model,gpu_kv,gpu_compute,cpu_model,cpu_kv,tg0,tg_ctx,pp_ctx,keys,prompt_tokens,secs".split(",")
 KEYS = ("ALPHA", "BETA", "GAMMA")
@@ -67,7 +67,7 @@ def probe(label, build, args, ctx, say, writer):
     args = " ".join(a for a in args.split() if a != "LOADONLY")
     row = dict.fromkeys(FIELDS, ""); row.update(label=label, ctx=ctx, status="fail")
     t0 = time.time()
-    d = os.path.join(R, f"ctx-{CUR}")
+    d = rp(f"ctx-{CUR}")
     os.makedirs(d, exist_ok=True)
     logp = os.path.join(d, f"{re.sub(r'\W+', '_', label)}-{ctx}.log")
     env = dict(os.environ, PATH="/opt/cuda/bin:" + os.environ["PATH"])
@@ -102,7 +102,7 @@ def probe(label, build, args, ctx, say, writer):
         say(f"  loaded gpu_model={row['gpu_model']} kv={row['gpu_kv']} compute={row['gpu_compute']} cpu_model={row['cpu_model']} cpu_kv={row['cpu_kv']}")
         r = post("/completion", {"prompt": "Count upward: 1, 2, 3, 4, 5,", "n_predict": 64, "temperature": 0, "ignore_eos": True, "cache_prompt": False}, 300)
         row["tg0"] = round(r["timings"]["predicted_per_second"], 1)
-        corpus = open(os.path.join(R, "ppl-corpus.txt"), errors="replace").read()
+        corpus = open(rp("ppl-corpus.txt"), errors="replace").read()
         n = len(post("/tokenize", {"content": corpus[:60000]}, 120)["tokens"])
         tpc = n / 60000
         rnd = random.Random(ctx)
@@ -140,8 +140,8 @@ def run(name):
     global CUR
     CUR = name
     _, args, variants = plan(name)
-    out = open(os.path.join(R, f"ctx-{name}.csv"), "w")
-    w = csv.DictWriter(out, FIELDS); log = open(os.path.join(R, f"ctx-{name}.log"), "w")
+    out = open(rp(f"ctx-{name}.csv"), "w")
+    w = csv.DictWriter(out, FIELDS); log = open(rp(f"ctx-{name}.log"), "w")
     def say(msg):
         log.write(f"{time.strftime('%T')} {msg}\n"); log.flush()
     t0 = time.time()

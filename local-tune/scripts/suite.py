@@ -10,7 +10,8 @@ Files: results/compare-<name>.*, results/suite-<name>.csv/.log and suite-<name>.
 import csv, json, os, re, subprocess, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 import compare, jobs, watch
-from watch import G, Y, RED, C, D, B, X, R
+from watch import G, Y, RED, C, D, B, X
+from paths import rp, ROOT, SCRIPTS
 
 GW = os.environ.get("GATEWAY_URL", "http://localhost:8700")
 CORES = len(set(re.findall(r"core id\s*:\s*(\d+)", open("/proc/cpuinfo").read()))) or os.cpu_count()
@@ -22,7 +23,7 @@ WORDS = "river stone apple engine cloud violin harbor copper meadow lantern tige
 
 def models(skip=(), only=(), saved=None):
     """The gateway's model list. saved = a run name: the list stored by that run, so old runs render as they were."""
-    f = os.path.join(R, f"suite-{saved}.conf.json")
+    f = rp(f"suite-{saved}.conf.json")
     conf = json.load(open(f)) if saved and os.path.exists(f) else json.load(urllib.request.urlopen(GW + "/conf", timeout=5))
     out = []
     for m in conf:
@@ -68,13 +69,13 @@ def bench_set(ms):
 
 def run(name, skip=(), only=()):
     ms = models(skip, only)
-    json.dump(models(), open(os.path.join(R, f"suite-{name}.conf.json"), "w"), indent=1)
+    json.dump(models(), open(rp(f"suite-{name}.conf.json"), "w"), indent=1)
     gens = bench_set(ms)
-    with open(os.path.join(R, f"compare-{name}.plan"), "w") as f:
+    with open(rp(f"compare-{name}.plan"), "w") as f:
         f.write(f"title: every gateway model with its own settings\nargs: {BENCH}\n")
         f.writelines(f"{m['name']} | build-live | | -m {m['path']} -ngl {m['ngl']} -ctk {m['ctk']} -ctv {m['ctv']}\n" for m in gens)
-    out = open(os.path.join(R, f"suite-{name}.csv"), "w")
-    log = open(os.path.join(R, f"suite-{name}.log"), "w")
+    out = open(rp(f"suite-{name}.csv"), "w")
+    log = open(rp(f"suite-{name}.log"), "w")
     def say(msg):
         log.write(f"{time.strftime('%T')} {msg}\n"); log.flush()
     def put(model, metric, value):

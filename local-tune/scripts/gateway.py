@@ -18,9 +18,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 # Not resolved: started through a symlink, the symlink's folder is the home, so the code can live in the repo.
-HERE = Path(os.environ.get("GATEWAY_HOME") or Path(__file__).absolute().parent).expanduser()
-# The build of this checkout (rebuild: local-tune/build.sh build-live). Override with LLAMA_SERVER.
-BIN = os.environ.get("LLAMA_SERVER", str(Path(__file__).resolve().parents[1] / "build-live/bin/llama-server"))
+_HERE = Path(__file__).absolute().parent
+# started from the repo (scripts/), the model list and logs are in config/; through a link, the link's folder is the home
+HERE = Path(os.environ.get("GATEWAY_HOME") or (_HERE.parent / "config" if _HERE.name == "scripts" else _HERE)).expanduser()
+# The build of this checkout (rebuild: local-tune/scripts/build.sh build-live). Override with LLAMA_SERVER.
+BIN = os.environ.get("LLAMA_SERVER", str(Path(__file__).resolve().parents[2] / "build-live/bin/llama-server"))
 LOGS = HERE / "logs"
 PORT = int(os.environ.get("GATEWAY_PORT", 8700))
 # localhost + docker0 (reachable from containers, not the LAN)

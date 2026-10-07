@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Write the compare.py plans for the decode profile: one traced and one untraced run per model and context depth.
-usage: mkplans.py <trace-dir>   then: python3 local-tune/compare.py run prof-7b (prof-9b, prof-4b)"""
+usage: mkplans.py <trace-dir>   then: python3 local-tune/scripts/compare.py run prof-7b (prof-9b, prof-4b)"""
 import glob, os, sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+from paths import rp
 
 T = os.path.abspath(sys.argv[1])
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -17,7 +20,7 @@ def mk(n, title, m, args, depths):
     L = [f"title: {title}", f"args: -m {m} {args} -t 6 -fa 1 -p 0 -n 32 -r 2"]
     L += [f"d{d} | build-live | CUDA_INJECTION64_PATH={INJ} CUPTI_TRACE_OUT={T}/{n}-d{d}.tsv | -d {d}" for d in depths]
     L += [f"d{d}-plain | build-live | | -d {d}" for d in depths]
-    open(os.path.join(ROOT, "results", f"compare-prof-{n}.plan"), "w").write("\n".join(L) + "\n")
+    open(rp(f"compare-prof-{n}.plan"), "w").write("\n".join(L) + "\n")
 
 
 mk("7b", "Profile: 7B decode by context depth, CUPTI trace then untraced", M7, "-ngl 99 -ctk q8_0 -ctv q4_0", D)

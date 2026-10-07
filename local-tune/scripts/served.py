@@ -9,9 +9,9 @@ server's own predicted_per_second. --soak: that many chats with a different prom
 (column tg@16k); a failed load or request is logged as ERROR. The real gateway and its models.conf are not touched."""
 import json, os, re, statistics, subprocess, sys, tempfile, threading, time, urllib.request
 import compare
-from watch import R
+from paths import rp, ROOT, SCRIPTS, RESULTS
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.abspath(__file__))  # scripts/
 PORT = 8701
 
 
@@ -25,7 +25,7 @@ def run(name):
     opt = lambda f, d: (re.search(rf"(?:^| ){f} (\S+)", args) or [0, d])[1]
     gguf, depths, n, reps, soak = opt("-m", ""), [int(d) for d in opt("-d", "0").split(",")], int(opt("-n", "128")), int(opt("-r", "3")), int(opt("--soak", "0"))
     ctx = max((int(m[1]) for v in variants for m in [re.search(r"(?:^| )-c (\d+)", v[3])] if m), default=16384)
-    corpus = open(os.path.join(R, "ppl-corpus.txt"), errors="replace").read()
+    corpus = open(rp("ppl-corpus.txt"), errors="replace").read()
     home = tempfile.mkdtemp(prefix="served-")
     names = [f"v{i}" for i in range(len(variants))]
     with open(os.path.join(home, "models.conf"), "w") as f:
@@ -34,8 +34,8 @@ def run(name):
             f.write(f"{nm}|{os.path.abspath(own[1]) if own else gguf}|{v[3].replace(own[0], '') if own else v[3]}|llm|0|{8301 + i}|0\n")
     gw = subprocess.Popen([sys.executable, os.path.join(HERE, "gateway.py")], env=dict(os.environ, GATEWAY_HOME=home, GATEWAY_PORT=str(PORT), GATEWAY_BINDS="127.0.0.1"))
     url = f"http://127.0.0.1:{PORT}"
-    out = open(os.path.join(R, f"compare-{name}.csv"), "w")
-    log = open(os.path.join(R, f"compare-{name}.log"), "w")
+    out = open(rp(f"compare-{name}.csv"), "w")
+    log = open(rp(f"compare-{name}.log"), "w")
     def say(msg):
         log.write(f"{time.strftime('%T')} {msg}\n"); log.flush()
     def chat(nm, text, max_tokens):

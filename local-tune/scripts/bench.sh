@@ -7,7 +7,7 @@ B=${1:?build dir}; L=${2:?label}; shift 2
 export PATH=/opt/cuda/bin:$PATH
 M=${BENCH_MODELS:-$HOME/odysseus-local/models}   # folder with the small models; set BENCH_MODELS to use your own
 Q=${BENCH_9B:-$HOME/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf}
-mkdir -p "$(dirname "$0")/results"; OUT="$(dirname "$0")/results/$L.csv"; : > "$OUT"
+OUT="$(python3 "$(dirname "$0")/paths.py" "$L.csv")"; : > "$OUT"
 LOG="${OUT%.csv}.log"; : > "$LOG"; T0=$(date +%s)
 TIMER='BEGIN{t=systime()} NR>1{print; fflush(); n=systime(); a=$(NF-7); d=$(NF-5); gsub(/"/,"",a); gsub(/"/,"",d); printf "%s   TEST %s@%s took=%ds\n", strftime("%T"), (a>0?"pp":"tg"), d, n-t >> lf; fflush(lf); t=n}'
 run() { # model ngl

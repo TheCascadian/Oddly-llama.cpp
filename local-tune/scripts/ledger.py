@@ -2,8 +2,8 @@
 # Build the results page (ledger.html) from results/ and ledger.template.html.
 # Usage: ledger.py [out.html]. Verdicts are in DEC below; numbers come from the csv files.
 import csv, json, os, re, statistics as st, sys
-HERE=os.path.dirname(os.path.abspath(__file__))
-R=os.path.join(HERE,'results','')
+from paths import rp, LOCAL, SCRIPTS
+HERE=SCRIPTS
 ITERS=[
  dict(id='b1',n='1',name='Starting build, earlier session',desc='Card treated as if it had tensor cores. Long-context numbers are single runs.'),
  dict(id='b2',n='1',name='Starting build, tonight',desc='Same code, measured again tonight with 3 repetitions. The fair reference for build 6.'),
@@ -15,7 +15,7 @@ ITERS=[
 ]
 def rd(f, pre=0):
     out=[]
-    for r in csv.reader(open(R+f)):
+    for r in csv.reader(open(rp(f))):
         try: ts=float(r[-2]); sd=float(r[-1]); int(r[-8])
         except Exception: continue
         out.append(dict(pre=r[:pre], model=os.path.basename(r[pre+5]), ngl=r[pre+17], np=int(r[-8]), ng=int(r[-7]), depth=int(r[-6]), t=r[-5], ts=ts, sd=sd))
@@ -55,7 +55,7 @@ def kv_panels(pp):
     return P
 # kernel comparisons
 def cmp(name):
-    return [dict(label=r[0], np=int(r[-8]), depth=int(r[-6]), ts=float(r[-2]), sd=float(r[-1])) for r in csv.reader(open(R+f'compare-{name}.csv')) if len(r)>20]
+    return [dict(label=r[0], np=int(r[-8]), depth=int(r[-6]), ts=float(r[-2]), sd=float(r[-1])) for r in csv.reader(open(rp(f'compare-{name}.csv'))) if len(r)>20]
 dec=cmp('f16-decode'); prm=cmp('f16-prompt'); cf=cmp('f16-confirm')
 KD=[('tile','fix1','T','Tile kernel (what build 3 used)'),('vector','final','V','Vector kernel (what build 6 uses)'),('tensor','b2','M','Tensor-core kernel (what build 1 uses)')]
 def dl(d): return f'{d//1024} thousand tokens in context' if d else 'empty context'
@@ -75,7 +75,7 @@ for pp,title in ((False,'Back-to-back check, generation, f16 memory on GPU'),(Tr
 def hms(s): h,m,x=map(int,s.split(':')); return h*3600+m*60+x
 def kv_timing(it):
     name,reps=KV[it]; rows={}; cur=None
-    for l in open(R+f'kvmatrix-{name}.log',errors='replace'):
+    for l in open(rp(f'kvmatrix-{name}.log'),errors='replace'):
         m=re.match(r'(\d\d:\d\d:\d\d) START ctk=ctv=(\S+) nkvo=(\d)',l)
         if m: cur=(m[2],int(m[3])); rows[cur]=[hms(m[1]),None]; continue
         m=re.match(r'(\d\d:\d\d:\d\d) DONE',l)
@@ -125,7 +125,7 @@ tiles=[
 # stability table
 logre=re.compile(r'vram=(\d+) MiB')
 def peak(name):
-    try: return max(int(m[1]) for m in logre.finditer(open(R+f'kvmatrix-{name}.log',errors='replace').read()))
+    try: return max(int(m[1]) for m in logre.finditer(open(rp(f'kvmatrix-{name}.log'),errors='replace').read()))
     except Exception: return None
 def missing(it):
     out=[]
@@ -224,7 +224,7 @@ def cmp_labels(name):
     return list(dict.fromkeys(base(x['label']) for x in cmp(name)))
 def cmp_peak(name):
     out = {}; cur = None
-    for l in open(R+f'compare-{name}.log', errors='replace'):
+    for l in open(rp(f'compare-{name}.log'), errors='replace'):
         m = re.match(r'\d\d:\d\d:\d\d START (.+)', l)
         if m: cur = base(m[1]); continue
         m = logre.search(l)
@@ -232,7 +232,7 @@ def cmp_peak(name):
     return out
 def spec(label):
     acc = {}
-    for r in csv.DictReader(open(R+f'spec-{label}.csv')):
+    for r in csv.DictReader(open(rp(f'spec-{label}.csv'))):
         acc.setdefault((r['variant'], r['prompt']), []).append(float(r['tg_tps']))
     return {k: dict(v=st.mean(v), sd=st.pstdev(v), n=len(v)) for k, v in acc.items()}
 def bar(lab, c, cls='b1', ref=False, fail='does not fit'):
@@ -317,9 +317,9 @@ ub = [cmp_avg(f)[('ub 1024', True, 0)]['v']/cmp_avg(f)[('ub 512 (default)', True
 n9o, n9n, n7o, n7n, n7a = c9('22', False, 0)['v'], c9('25', False, 0)['v'], c7('24', False, 0)['v'], c7('28', False, 0)['v'], c7('99', False, 0)['v']
 forced = [kvv('f16', k, 0, d, False)/kvv('b1', k, 0, d, False)-1 for k in ('q8_0', 'q4_0') for d in (8192, 16384) if kvv('f16', k, 0, d, False)]
 def mix(name, label, pp, depth):
-    x = [float(r[-2]) for r in csv.reader(open(R+f'compare-{name}.csv')) if r[0].startswith(label) and bool(int(r[-8])) == pp and int(r[-6]) == depth]
+    x = [float(r[-2]) for r in csv.reader(open(rp(f'compare-{name}.csv'))) if r[0].startswith(label) and bool(int(r[-8])) == pp and int(r[-6]) == depth]
     return sum(x)/len(x)
-def pplv(name): return {r[0]: float(r[1]) for r in csv.reader(open(R+f'ppl-{name}.csv')) if r[1]}
+def pplv(name): return {r[0]: float(r[1]) for r in csv.reader(open(rp(f'ppl-{name}.csv'))) if r[1]}
 MC = 'kvmix-7b-confirm'; m_old = [mix(MC, 'ngl 28, q8/q8 (shipped)', False, d) for d in (0, 8192, 15360)]; m_new = [mix(MC, 'ngl 99, q8/q4', False, d) for d in (0, 8192, 15360)]
 pk = pplv('kv-7b'); p9 = pplv('kv-9b'); fit = spec('fit-7b')
 M9 = 'kvmix-9b-ngl'
@@ -446,7 +446,7 @@ PLAIN = [
  ]),
 ]
 plain = [dict(c=c, name=n, desc=d, items=[dict(w=w, r=r) for w, r in items]) for c, n, d, items in PLAIN]
-try: LAB = json.load(open(R+'lab-state.json'))
+try: LAB = json.load(open(rp('lab-state.json')))
 except Exception: LAB = {}
 import time
 LW = {'same': ('same', 'No change'), 'faster': ('yes', 'Faster'), 'slower': ('no', 'Slower'), 'fail': ('no', 'Failed'), 'build failed': ('no', 'Build failed')}
@@ -462,6 +462,6 @@ for name, sv in LAB.items():
 lab = f'<table class="ledger"><thead><tr><th>Result</th><th>Step</th><th colspan="2">Candidate build against shipped build</th></tr></thead><tbody>{lab}</tbody></table>'
 D.update(heads=heads, plain=plain, lab=lab, ledger=ledger, counts=counts, now=now, ngl=ngl7+ngl9, ngram=ngram, tune=tune, draft=draft, switches=switches)
 
-out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'ledger.html')
+out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(LOCAL, 'ledger.html')
 open(out, 'w').write(open(os.path.join(HERE, 'ledger.template.html')).read().replace('__DATA__', json.dumps(D)))
 print(f'{out}: {len(DEC)} decisions, ' + ', '.join(f'{c["v"]} {c["k"].lower()}' for c in counts))

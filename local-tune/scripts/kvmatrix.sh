@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # KV-cache matrix on R1-distill-7B Q4_K_S: type x depth x kv-offload.
-# usage: [KV_REPS=n] [KV_PAIRS="q8_0/q4_0 ..."] [KV_NKVO="0"] local-tune/kvmatrix.sh <build-dir>   (run from repo root)
+# usage: [KV_REPS=n] [KV_PAIRS="q8_0/q4_0 ..."] [KV_NKVO="0"] local-tune/scripts/kvmatrix.sh <build-dir>   (run from repo root)
 # KV_PAIRS entries are K-type/V-type. Mixed pairs need a build with -DGGML_CUDA_FA_ALL_QUANTS=ON.
 # live view: tail -f local-tune/results/kvmatrix.log ; data: kvmatrix.csv
 # The log also gets one "TEST pp|tg@depth took=Ns" line per result and "took=" on every DONE line.
-B=${1:-build-base}; R=local-tune/results
+B=${1:-build-base}; R=local-tune/results/kv; mkdir -p $R/kv; mkdir -p $R
 M=$(ls ~/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/*Q4_K_S.gguf)
 export PATH=/opt/cuda/bin:$PATH
 # Copies result lines to the csv and logs how long each one took (model load and context fill included).

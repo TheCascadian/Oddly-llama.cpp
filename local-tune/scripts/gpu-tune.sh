@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Guided GPU tuning for the 1660 Ti. Asks before each step, measures, and offers to undo.
-# usage: local-tune/gpu-tune.sh        (run from a terminal; it asks for sudo when needed)
+# usage: local-tune/scripts/gpu-tune.sh        (run from a terminal; it asks for sudo when needed)
 # Each step: apply -> bench.sh -> compare with the baseline -> keep or undo. Nothing changes without a "y".
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 BUILD=build-live
 STAMP=$(date +%m%d-%H%M)
 BASE="gpu-base-$STAMP"
@@ -11,18 +11,18 @@ ask() { local a; read -r -p "$1 [y/N] " a; [[ $a == y || $a == Y ]]; }
 tg() { # print pp/tg t/s for a bench label
   python3 - "$1" <<'P'
 import csv, sys
-for r in csv.reader(open(f"local-tune/results/{sys.argv[1]}.csv")):
+for r in csv.reader(open(__import__("subprocess").check_output(["python3","local-tune/scripts/paths.py",sys.argv[1]+".csv"],text=True).strip())):
     print(f"   {r[11].split('/')[-1][:28]:28} ngl={r[17]:>3} {'pp512' if int(r[-8]) else 'tg128'} {float(r[-2]):8.1f} t/s")
 P
 }
 measure() { # label
-  echo ">> benchmark $1 (about 2 minutes). Watch it in the viewer: python3 local-tune/watch.py"
-  local-tune/bench.sh "$BUILD" "$1" -t 6 -fa 1 >/dev/null 2>&1 && tg "$1"
+  echo ">> benchmark $1 (about 2 minutes). Watch it in the viewer: python3 local-tune/scripts/watch.py"
+  local-tune/scripts/bench.sh "$BUILD" "$1" -t 6 -fa 1 >/dev/null 2>&1 && tg "$1"
 }
 checkq() { # output check for any clock change: backend test + perplexity
   echo ">> correctness check"
   if build-exp/bin/test-backend-ops -o FLASH_ATTN_EXT 2>&1 | tail -3 | grep -q -i 'ok'; then echo "   test-backend-ops: ok"; else echo "   test-backend-ops: NOT CLEAN"; return 1; fi
-  python3 local-tune/ppl.py run gpu-check >/dev/null 2>&1; grep -h -i -E 'final|ppl' "local-tune/results/ppl-gpu-check.csv" 2>/dev/null | tail -2
+  python3 local-tune/scripts/ppl.py run gpu-check >/dev/null 2>&1; grep -h -i -E 'final|ppl' "$(python3 local-tune/scripts/paths.py ppl-gpu-check.csv)" 2>/dev/null | tail -2
   echo "   Compare with 8.2 (+/- 0.14). A much higher number means the setting corrupts output: undo it."
   ask "   Is the perplexity within the normal range?"
 }
@@ -30,9 +30,9 @@ smi() { nvidia-smi --query-gpu=persistence_mode,power.limit,clocks.max.sm,clocks
 
 # --- automatic setup ---
 # 1. live view: open it unless a watch.py is already running
-if ! ps -C python3 -o args= | grep -q 'local-tune/watch.py'; then
-  command -v konsole >/dev/null && setsid -f konsole --workdir "$PWD" -e bash -c 'while true; do python3 local-tune/watch.py; sleep 2; done' >/dev/null 2>&1
-  sleep 3; ps -C python3 -o args= | grep -q 'local-tune/watch.py' && echo "viewer: opened" || echo "viewer: could not open, run python3 local-tune/watch.py yourself"
+if ! ps -C python3 -o args= | grep -q 'local-tune/scripts/watch.py'; then
+  command -v konsole >/dev/null && setsid -f konsole --workdir "$PWD" -e bash -c 'while true; do python3 local-tune/scripts/watch.py; sleep 2; done' >/dev/null 2>&1
+  sleep 3; ps -C python3 -o args= | grep -q 'local-tune/scripts/watch.py' && echo "viewer: opened" || echo "viewer: could not open, run python3 local-tune/scripts/watch.py yourself"
 else echo "viewer: already running"; fi
 # 2. sudo password once, kept alive while the script runs
 sudo -v || { echo "sudo is needed"; exit 1; }
@@ -96,6 +96,6 @@ if ask "Test shmem_enabled=always?"; then
   ask "   Keep it?" || echo never | sudo tee /sys/kernel/mm/transparent_hugepage/shmem_enabled >/dev/null
 fi
 
-echo; echo "Done. Results are in local-tune/results/ with labels $BASE and gpu-*-$STAMP."
+echo; echo "Done. Results are in local-tune/results/ (hardware/ and quality/) with labels $BASE and gpu-*-$STAMP."
 echo "Tell Claude the stamp ($STAMP) and which steps you kept, and it will add the rows to TRIALS.md."
 echo "Current state: $(smi)"

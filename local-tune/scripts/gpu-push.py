@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Find the highest stable GPU memory and core clock offsets for the GTX 1660 Ti, with a stability test at every step.
-usage: local-tune/gpu-push.py [run] [--resume] [--power 120] [--mem-max 1500] [--mem-step 100] [--core-max 300] [--core-step 15] [--soak 10] [--margin 1]
-       local-tune/gpu-push.py apply      set the offsets saved in results/gpu-oc.json (they are lost at reboot)
-       local-tune/gpu-push.py reset      offsets back to 0
-Run as your normal user. It asks for sudo once and uses it only to call NVML (offset set calls). The view is: python3 local-tune/watch.py
+usage: local-tune/scripts/gpu-push.py [run] [--resume] [--power 120] [--mem-max 1500] [--mem-step 100] [--core-max 300] [--core-step 15] [--soak 10] [--margin 1]
+       local-tune/scripts/gpu-push.py apply      set the offsets saved in results/gpu-oc.json (they are lost at reboot)
+       local-tune/scripts/gpu-push.py reset      offsets back to 0
+Run as your normal user. It asks for sudo once and uses it only to call NVML (offset set calls). The view is: python3 local-tune/scripts/watch.py
 Each step sets the offset, then runs the 7B model (llama-bench decode at 4K context, llama-perplexity on 4 chunks) and checks:
   - the process exits cleanly, and the kernel log has no new NVRM Xid line
   - perplexity equals the baseline digit for digit (the run is deterministic, a flipped bit moves it)
@@ -15,15 +15,14 @@ then only sweeps upward from there. The saved file changes only after the final 
 The offsets live in the driver only: a crash or a reboot returns them to 0. A hard hang needs a power button press, so save your work first."""
 import atexit, ctypes, json, os, re, signal, subprocess, sys, threading, time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-RES = os.path.join(HERE, "results")
-STATE = os.path.join(RES, "gpu-oc.json")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import ROOT, rp
+STATE = rp("gpu-oc.json")
 BUILD = os.path.join(ROOT, "build-live")
 MODEL = next((os.path.join(d, f) for d, _, fs in os.walk(os.path.expanduser("~/.lmstudio/models")) for f in fs if f == "DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf"), "")
-CORPUS = os.path.join(RES, "ppl-corpus.txt")
+CORPUS = rp("ppl-corpus.txt")
 STAMP = time.strftime("%m%d-%H%M")
-LOG = os.path.join(RES, f"gpupush-{STAMP}.log")
+LOG = rp(f"gpupush-{STAMP}.log")
 T0 = time.time()
 
 
@@ -171,8 +170,8 @@ def main(args):
     open(LOG, "w").close()
     log(f"START gpu push, results in {LOG}")
     # live view
-    if "local-tune/watch.py" not in subprocess.run(["ps", "-C", "python3", "-o", "args="], capture_output=True, text=True).stdout:
-        subprocess.run(["setsid", "-f", "konsole", "--workdir", ROOT, "-e", "bash", "-c", "while true; do python3 local-tune/watch.py; sleep 2; done"],
+    if "local-tune/scripts/watch.py" not in subprocess.run(["ps", "-C", "python3", "-o", "args="], capture_output=True, text=True).stdout:
+        subprocess.run(["setsid", "-f", "konsole", "--workdir", ROOT, "-e", "bash", "-c", "while true; do python3 local-tune/scripts/watch.py; sleep 2; done"],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if subprocess.run(["sudo", "-v"]).returncode:
         sys.exit("sudo is needed")

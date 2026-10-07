@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Live dashboard for the local-tune runners. Read-only; run: local-tune/watch.py
+"""Live dashboard for the local-tune runners. Read-only; run: local-tune/scripts/watch.py
 Without a label it follows the newest run: kvmatrix.sh, compare.py, suite.py, spectest.py, ppl.py or ctxprobe.py.
 With results/sequence.txt (lines: "bench|kv <label> <title>") it also shows every stage of a queued run.
-local-tune/watch.py <label> shows a saved run: a compare plan, a spectest label or the KV table of a finished stage."""
+local-tune/scripts/watch.py <label> shows a saved run: a compare plan, a spectest label or the KV table of a finished stage."""
 import csv, os, re, sys, time
 
-R = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
+from paths import RESULTS as R, rp, rfiles
 CONFIGS = [(k, n) for k in ("f16", "q8_0", "q4_0") for n in (0, 1)]
 DEPTHS = (0, 8192, 16384)
 G, Y, RED, C, D, B, X = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[1m", "\033[0m"
@@ -13,7 +13,7 @@ G, Y, RED, C, D, B, X = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m
 
 def read(name):
     try:
-        return open(os.path.join(R, name), errors="replace").read().splitlines()
+        return open(rp(name), errors="replace").read().splitlines()
     except OSError:
         return []
 
@@ -147,7 +147,7 @@ def render_timing(log):
 
 def mtime(name):
     try:
-        return os.path.getmtime(os.path.join(R, name))
+        return os.path.getmtime(rp(name))
     except OSError:
         return 0
 
@@ -284,7 +284,7 @@ def render(stem="kvmatrix", st=()):
 def newest():
     """(kind, name) of the run whose files changed last; kind is kv, compare, suite, spec or ppl."""
     best = ("kv", None, max(mtime("kvmatrix.log"), mtime("kvmatrix.csv")))
-    for f in os.listdir(R):
+    for f in rfiles():
         # spec logs are named per variant, so only the csv gives the label
         m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$|ppl-(.+?)\.(?:log|csv)$|ctx-(.+?)\.(?:log|csv)$|(?!kvmatrix|compare-|spec-|ppl-|ctx-|suite-)(.+?)\.log$", f)
         if m and mtime(f) > best[2]:
