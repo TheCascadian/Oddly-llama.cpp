@@ -3,6 +3,7 @@
 Three code changes live on this branch, plus a GPU overclock that is a setting and not code (see "GPU overclock" below). All are measured on this machine only.
 The interactive version of these results is [report.html](report.html); the overview with charts is in the repository [README](../README.md).
 Trials that did not ship and ideas not yet measured are in [TRIALS.md](TRIALS.md).
+The current state in one page, with every model old and new and one picture, is [ASSESSMENT.md](ASSESSMENT.md) (see "Models, suite and assessment").
 
 | # | Change | Effect | Commit |
 |---|---|---|---|
@@ -105,6 +106,23 @@ Perplexity check for KV format changes: `python3 local-tune/ppl.py run <name>` (
 
 Results page: `python3 local-tune/ledger.py` writes `local-tune/ledger.html` from the files in `results/`. It lists every decision with its verdict and deciding number, then the charts. After a new trial, add one row to `DEC` in `ledger.py` and run it again.
 
+### Models, suite and assessment
+
+One file names the models: `models.conf` (format in [models.example.conf](models.example.conf)). `gateway.py` serves them on port 8700 and starts each `llama-server` on first use. Nothing else holds a model path: `suite.py` and `assess.py` ask the gateway (`GET /conf`).
+```
+cp local-tune/models.example.conf local-tune/models.conf    # your GGUF files, one line each
+python3 local-tune/gateway.py                                # GATEWAY_CONF, GATEWAY_PORT, GATEWAY_BINDS, LLAMA_SERVER change the defaults
+python3 local-tune/suite.py run <name> [--only=a,b] [--skip=c]   # 1 llama-bench per model, 2 served speed, 3 job checks
+python3 local-tune/assess.py <new run> <base run>            # ASSESSMENT.md, img/hero.svg, img/hero.png, img/models.svg
+```
+- `suite.py` stores the model list of each run in `results/suite-<name>.conf.json`, so an old run still renders after `models.conf` changes. Point it at another gateway with `GATEWAY_URL`.
+- Job checks are in `jobs.py`: routing, tool calls, code that must pass asserts, guard verdicts, and drafter speed with unchanged text. A model gets the checks named in the last field of its `models.conf` line. `python3 local-tune/jobs.py <model> <job>` runs one.
+- Guard jobs: `guard` and `toolguard` read the model's full JSON answer; `guard1` and `toolguard1` start the answer for the model and read the probability of the one verdict token (about half the time per verdict, same verdicts). `toolguard` uses the `<tool>: <input>` form that Odysseus sends before it runs a tool.
+- [BACKEND-PLAN.md](BACKEND-PLAN.md) is the plan for backend changes for the added models, with its outcome; the numbers are in [TRIALS.md](TRIALS.md) section 2e.
+- `assess.py` sorts models by run: in both runs is kept, only in the new run is new. Dropped and excluded models, and the before and after pairs, are listed in `assess.conf` as references to result files.
+- On this machine `~/odysseus-local/gateway.py` is a link to `local-tune/gateway.py`, and `~/odysseus-local/models.conf` is the model list. Odysseus only knows the gateway URL.
+- `oc-kit/` holds its own copies of `gpu-push.py`, `gpu-tune.sh` and a short `watch.py` on purpose: the folder is meant to be copied to another machine by itself.
+
 Result files in `local-tune/results/`:
 
 | File | Content |
@@ -119,6 +137,8 @@ Result files in `local-tune/results/`:
 | `spec-*` | llama-server tests: speculative decoding and load, see TRIALS.md |
 | `compare-kvmix-*`, `ppl-*` | K / V precision pairs: speed and perplexity, see TRIALS.md section 2b |
 | `compare-lab-*`, `ppl-lab-*` | plans that `lab.py` runs on a source change |
+| `suite-<name>.csv`, `.log`, `.conf.json`, `compare-<name>.*` | one `suite.py` run: served speed and job checks, its model list, its llama-bench rows |
+| `assess.json` | everything `assess.py` put in ASSESSMENT.md, as data |
 | `exp*`, `kvmatrix-exp*`, `base1`, `kvmatrix-base1` | earlier experiments kept for reference |
 
 ## Change 2: qwen35 GDN path on CPU layers

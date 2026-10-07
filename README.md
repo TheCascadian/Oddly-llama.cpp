@@ -11,7 +11,7 @@
 
 <img src="local-tune/img/speedups.svg" alt="Speed-up of each kept change: 9B code edit 7.0x, 3B code edit 3.2x, 7B at 15K context 1.81x, 7B empty context 1.53x, 7B clocks 1.16x, 9B 1.16x and 1.15x" width="860">
 
-[Full report](local-tune/report.html) · [Change log with code](local-tune/README.md) · [Every trial](local-tune/TRIALS.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
+[Assessment](local-tune/ASSESSMENT.md) · [Full report](local-tune/report.html) · [Change log with code](local-tune/README.md) · [Every trial](local-tune/TRIALS.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
 
 </div>
 
@@ -138,6 +138,7 @@ It needs the proprietary NVIDIA driver, `sudo`, a GGUF that fits in VRAM and a f
 
 - `python3 local-tune/lab.py auto` reruns the checks that cover a source file when it changes and rewrites the results page.
 - `local-tune/bench.sh <build-dir> <label>` runs the four standard models; `compare.py`, `ppl.py` and `spectest.py` run A/B, perplexity and server-side trials. See [local-tune/README.md](local-tune/README.md#reproduce).
+- `python3 local-tune/suite.py run <name>` tests every model in `models.conf` (speed, served speed, job checks); `python3 local-tune/assess.py <new> <base>` writes the [assessment](local-tune/ASSESSMENT.md) and its picture.
 - `python3 local-tune/watch.py` is the live terminal view of whatever run is newest.
 - The interactive [report](local-tune/report.html) has the same data with expandable changes and hover charts. Open it locally in a browser, or through an HTML previewer such as `https://htmlpreview.github.io/?https://github.com/TheCascadian/Oddly-llama.cpp/blob/local-1660ti/local-tune/report.html`.
 

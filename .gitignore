@@ -162,3 +162,5 @@ AGENTS.local.md
 /local-tune/results/gpu-oc.json*
 /local-tune/oc-kit.tar.gz
 /local-tune/oc-kit.zip
+/local-tune/models.conf
+/local-tune/odysseus/

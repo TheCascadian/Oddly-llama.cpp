@@ -1,0 +1,638 @@
+{
+ "title": "Oddly-llama.cpp on a 6 GB GTX 1660 Ti",
+ "since": "2026-10-05 12:00",
+ "new_run": "shortlist",
+ "base_run": "e2e",
+ "machine": {
+  "cpu": "AMD Ryzen 5 7600X",
+  "cores": 6,
+  "threads": 12,
+  "ram_gb": 62,
+  "kernel": "6.18.52-1-cachyos-lts",
+  "commit": "d0ab9a678",
+  "branch": "local-1660ti",
+  "gpu": "GTX 1660 Ti",
+  "vram_mb": 6144,
+  "driver": "615.71.09",
+  "power_w": 120,
+  "power_stock_w": 120,
+  "oc": {
+   "mem": 2300,
+   "core": 105,
+   "stamp": "1006-1325",
+   "tg": 50.940242,
+   "ppl": "12.8239",
+   "power": 120
+  }
+ },
+ "changes": [
+  {
+   "group": "Kernel",
+   "change": "No tensor-core kernels on GTX 16xx",
+   "on": "1.3B reads a prompt",
+   "before": 860.170514,
+   "after": 2900.862422,
+   "where": "a260d811e",
+   "src": "final-base, final-fix"
+  },
+  {
+   "group": "Kernel",
+   "change": "No tensor-core kernels on GTX 16xx",
+   "on": "3B reads a prompt",
+   "before": 388.148882,
+   "after": 1330.838041,
+   "where": "a260d811e",
+   "src": "final-base, final-fix"
+  },
+  {
+   "group": "Kernel",
+   "change": "No tensor-core kernels on GTX 16xx",
+   "on": "9B reads a prompt, 22 layers on GPU",
+   "before": 155.528563,
+   "after": 499.798648,
+   "where": "a260d811e",
+   "src": "final-base, final-fix"
+  },
+  {
+   "group": "Kernel",
+   "change": "No tensor-core kernels on GTX 16xx",
+   "on": "9B reads a prompt, CPU only",
+   "before": 140.289756,
+   "after": 400.96089,
+   "where": "a260d811e",
+   "src": "final-base, final-fix"
+  },
+  {
+   "group": "Backend",
+   "change": "qwen35: no fused GDN path on CPU layers",
+   "on": "9B writes, 22 layers on GPU",
+   "before": 15.582805,
+   "after": 20.636515,
+   "where": "52b730eb4",
+   "src": "base, patched"
+  },
+  {
+   "group": "Backend",
+   "change": "qwen35: no fused GDN path on CPU layers",
+   "on": "9B writes, CPU only",
+   "before": 7.69139,
+   "after": 9.393509,
+   "where": "52b730eb4",
+   "src": "base, patched"
+  },
+  {
+   "group": "Kernel",
+   "change": "q8_0 K / q4_0 V attention pair in the default build",
+   "on": "7B writes, empty context",
+   "before": 48.683714,
+   "after": 53.971663,
+   "where": "afbf9a20c",
+   "src": "kvmix-7b-confirm, kvmix-7b-confirm"
+  },
+  {
+   "group": "Kernel",
+   "change": "q8_0 K / q4_0 V attention pair in the default build",
+   "on": "7B writes, 15K context",
+   "before": 28.449884,
+   "after": 32.926764,
+   "where": "afbf9a20c",
+   "src": "kvmix-7b-confirm, kvmix-7b-confirm"
+  },
+  {
+   "group": "Settings",
+   "change": "More layers on the GPU",
+   "on": "9B writes, -ngl 22 to 25",
+   "before": 21.285258,
+   "after": 24.588,
+   "where": "models.conf",
+   "src": "ngl-9b-16k, ngl-9b-16k"
+  },
+  {
+   "group": "Settings",
+   "change": "More layers on the GPU",
+   "on": "7B writes, -ngl 24 to 99",
+   "before": 35.126837,
+   "after": 53.090798,
+   "where": "models.conf",
+   "src": "ngl-7b-16k, ngl-7b-16k"
+  },
+  {
+   "group": "Settings",
+   "change": "ngram-simple speculative decoding",
+   "on": "9B edits a code file",
+   "before": 24.103333333333335,
+   "after": 169.58333333333334,
+   "where": "models.conf",
+   "src": "edit-qwythos9b, edit-qwythos9b"
+  },
+  {
+   "group": "Settings",
+   "change": "ngram-simple speculative decoding",
+   "on": "3B edits a code file",
+   "before": 86.70333333333333,
+   "after": 273.69666666666666,
+   "where": "models.conf",
+   "src": "tune-qwen3b, tune-qwen3b"
+  },
+  {
+   "group": "Hardware",
+   "change": "GPU overclock: memory +2300, core +105, 120 W",
+   "on": "7B writes, 4K context",
+   "before": 43.8,
+   "after": 50.7,
+   "where": "gpu-push.py",
+   "src": "gpupush-1006-1250, gpupush-1006-1325"
+  },
+  {
+   "group": "Models",
+   "change": "Swarm worker: qwen2.5-3b replaced by gemma4-e2b",
+   "on": "writes, empty context",
+   "before": 102.864095,
+   "after": 136.486755,
+   "where": "models.conf",
+   "src": "newmodels, newmodels"
+  },
+  {
+   "group": "Models",
+   "change": "Swarm worker: qwen2.5-3b replaced by gemma4-e2b",
+   "on": "reads a prompt",
+   "before": 1410.153828,
+   "after": 2139.11675,
+   "where": "models.conf",
+   "src": "newmodels, newmodels"
+  }
+ ],
+ "models": [
+  {
+   "name": "qwythos-9b",
+   "status": "kept",
+   "type": "llm",
+   "par": 1,
+   "spec": "ngram-simple",
+   "gb": 5.24,
+   "tg0": 26.381167,
+   "tg8": 22.122675,
+   "pp0": 540.837111,
+   "one": 26.1,
+   "all": null,
+   "items": null,
+   "vram": 4322.0,
+   "load": 1.5,
+   "note": "",
+   "jobs": {
+    "tools": [
+     "6/6",
+     "every call valid"
+    ],
+    "code": [
+     "3/4",
+     "functions that pass their asserts"
+    ]
+   }
+  },
+  {
+   "name": "deepseek-coder-1.3b",
+   "status": "kept",
+   "type": "completion",
+   "par": 4,
+   "spec": "ngram-simple",
+   "gb": 1.33,
+   "tg0": 166.704576,
+   "tg8": 107.609886,
+   "pp0": 3026.917162,
+   "one": 183.4,
+   "all": 465.1,
+   "items": null,
+   "vram": 3155.0,
+   "load": 0.5,
+   "note": "",
+   "jobs": {
+    "code": [
+     "3/4",
+     "functions that pass their asserts"
+    ]
+   }
+  },
+  {
+   "name": "gemma4-e2b",
+   "status": "kept",
+   "type": "llm",
+   "par": 8,
+   "spec": "",
+   "gb": 2.44,
+   "tg0": 137.023646,
+   "tg8": 117.394015,
+   "pp0": 2031.766418,
+   "one": 132.4,
+   "all": 348.8,
+   "items": 18.9,
+   "vram": 1587.0,
+   "load": 1.5,
+   "note": "forced-label classify",
+   "jobs": {
+    "classify": [
+     "16/16",
+     "7.9 items/s"
+    ],
+    "tools": [
+     "6/6",
+     "every call valid"
+    ]
+   }
+  },
+  {
+   "name": "embeddinggemma-300m",
+   "status": "kept",
+   "type": "embedding",
+   "par": 1,
+   "spec": "",
+   "gb": 0.31,
+   "tg0": null,
+   "tg8": null,
+   "pp0": null,
+   "one": null,
+   "all": null,
+   "items": 454.3,
+   "vram": 428.0,
+   "load": 1.0,
+   "note": "768 dimensions",
+   "jobs": {}
+  },
+  {
+   "name": "qwen3-reranker-0.6b",
+   "status": "kept",
+   "type": "rerank",
+   "par": 1,
+   "spec": "",
+   "gb": 0.6,
+   "tg0": null,
+   "tg8": null,
+   "pp0": null,
+   "one": null,
+   "all": null,
+   "items": 38.9,
+   "vram": 1896.0,
+   "load": 1.0,
+   "note": "right document ranked first",
+   "jobs": {}
+  },
+  {
+   "name": "gemma4-e2b-mtp",
+   "status": "rejected",
+   "type": "llm",
+   "par": 8,
+   "spec": "draft-mtp",
+   "gb": 2.44,
+   "tg0": 125.0,
+   "tg8": null,
+   "pp0": null,
+   "one": 125.0,
+   "all": 324.5,
+   "items": 15.3,
+   "vram": 1909.0,
+   "load": 2.0,
+   "note": "MTP drafter: 0.83x speed and the text changed",
+   "jobs": {
+    "draft": [
+     "0.83x",
+     "TEXT DIFFERS; one stream 133 to 110 t/s; 8 slots 340 to 288 t/s"
+    ]
+   }
+  },
+  {
+   "name": "minicpm5-2b",
+   "status": "new",
+   "type": "llm",
+   "par": 8,
+   "spec": "",
+   "gb": 1.45,
+   "tg0": 136.413255,
+   "tg8": 82.976152,
+   "pp0": 1969.832199,
+   "one": 133.1,
+   "all": 305.4,
+   "items": 23.9,
+   "vram": 2125.0,
+   "load": 1.0,
+   "note": "forced-label classify",
+   "jobs": {
+    "classify": [
+     "16/16",
+     "10.5 items/s"
+    ],
+    "tools": [
+     "6/6",
+     "every call valid"
+    ]
+   }
+  },
+  {
+   "name": "qwen3.5-4b",
+   "status": "new",
+   "type": "llm",
+   "par": 1,
+   "spec": "ngram-simple",
+   "gb": 2.64,
+   "tg0": 78.381125,
+   "tg8": 62.827451,
+   "pp0": 985.836348,
+   "one": 77.6,
+   "all": null,
+   "items": null,
+   "vram": 3151.0,
+   "load": 1.0,
+   "note": "",
+   "jobs": {
+    "tools": [
+     "6/6",
+     "every call valid"
+    ],
+    "code": [
+     "4/4",
+     "functions that pass their asserts"
+    ]
+   }
+  },
+  {
+   "name": "qwen3.5-4b-mtp",
+   "status": "rejected",
+   "type": "llm",
+   "par": 1,
+   "spec": "draft-mtp",
+   "gb": 2.64,
+   "tg0": 63.3,
+   "tg8": null,
+   "pp0": null,
+   "one": 63.3,
+   "all": null,
+   "items": null,
+   "vram": 3688.0,
+   "load": 1.5,
+   "note": "MTP drafter: 0.65x speed",
+   "jobs": {
+    "draft": [
+     "0.65x",
+     "same text; one stream 78 to 51 t/s"
+    ]
+   }
+  },
+  {
+   "name": "sharp-spark-4b",
+   "status": "rejected",
+   "type": "llm",
+   "par": 1,
+   "spec": "ngram-simple",
+   "gb": null,
+   "tg0": 65.69555,
+   "tg8": 58.190885,
+   "pp0": 987.397661,
+   "one": 65.3,
+   "all": null,
+   "items": null,
+   "vram": 4038.0,
+   "load": 1.0,
+   "note": "tool calls 3 of 6; slower than qwen3.5-4b and 900 MiB larger",
+   "jobs": {
+    "code": [
+     "4/4",
+     "functions that pass their asserts"
+    ],
+    "tools": [
+     "3/6",
+     "missed run_shell create_document read_file"
+    ]
+   }
+  },
+  {
+   "name": "virbiusguard",
+   "status": "new",
+   "type": "completion",
+   "par": 4,
+   "spec": "",
+   "gb": 0.45,
+   "tg0": 347.524879,
+   "tg8": 158.570886,
+   "pp0": 6503.634136,
+   "one": 312.6,
+   "all": 639.7,
+   "items": null,
+   "vram": 1388.0,
+   "load": 1.0,
+   "note": "",
+   "jobs": {
+    "guard": [
+     "11/12",
+     "1 attacks missed; 0 safe inputs blocked; 151 ms per verdict"
+    ]
+   }
+  },
+  {
+   "name": "qwen2.5-3b Q5_K_M",
+   "status": "dropped",
+   "type": "llm",
+   "par": null,
+   "spec": "",
+   "gb": null,
+   "tg0": 102.864095,
+   "tg8": 73.370003,
+   "pp0": 1410.153828,
+   "one": null,
+   "all": null,
+   "items": null,
+   "vram": null,
+   "load": null,
+   "note": "replaced by gemma4-e2b as the swarm worker",
+   "jobs": {}
+  },
+  {
+   "name": "sharp-minicpm 2B Q6_K_XL",
+   "status": "dropped",
+   "type": "llm",
+   "par": null,
+   "spec": "",
+   "gb": null,
+   "tg0": 107.465641,
+   "tg8": 71.763301,
+   "pp0": 1875.164801,
+   "one": null,
+   "all": null,
+   "items": null,
+   "vram": null,
+   "load": null,
+   "note": "lost the first candidate round, file deleted",
+   "jobs": {}
+  },
+  {
+   "name": "agents-a1 4B Q4_K_M",
+   "status": "dropped",
+   "type": "llm",
+   "par": null,
+   "spec": "",
+   "gb": null,
+   "tg0": 78.701298,
+   "tg8": 70.407553,
+   "pp0": 1019.752035,
+   "one": null,
+   "all": null,
+   "items": null,
+   "vram": null,
+   "load": null,
+   "note": "lost the first candidate round, file deleted",
+   "jobs": {}
+  },
+  {
+   "name": "ternary-bonsai 8B PQ2_0",
+   "status": "dropped",
+   "type": "llm",
+   "par": null,
+   "spec": "",
+   "gb": null,
+   "tg0": 69.627649,
+   "tg8": 44.380039,
+   "pp0": 637.916295,
+   "one": null,
+   "all": null,
+   "items": null,
+   "vram": null,
+   "load": null,
+   "note": "lost the first candidate round, file deleted",
+   "jobs": {}
+  },
+  {
+   "name": "deepseek-r1-distill 7B Q4_K_S",
+   "status": "excluded",
+   "type": "llm",
+   "par": null,
+   "spec": "",
+   "gb": null,
+   "tg0": 53.971663,
+   "tg8": 40.324781,
+   "pp0": 681.562614,
+   "one": null,
+   "all": null,
+   "items": null,
+   "vram": null,
+   "load": null,
+   "note": "still served, left out of the suite runs on request",
+   "jobs": {}
+  }
+ ],
+ "tally": {
+  "Applied": 3,
+  "No gain": 6,
+  "No-go": 5,
+  "Not applied": 2,
+  "Saved": 2,
+  "Reference": 1
+ },
+ "edits": [
+  [
+   "Gateway",
+   "Source moved into this repo (local-tune/gateway.py); the Odysseus folder links to it. New GET /conf and a jobs column in models.conf"
+  ],
+  [
+   "Gateway",
+   "models.conf is the one model list: gateway, suite.py and assess.py read it, nothing else names a model path"
+  ],
+  [
+   "Swarm",
+   "MCP swarm server (votes, choices) uses gemma4-e2b with 8 slots as the worker"
+  ],
+  [
+   "Odysseus",
+   "agent_loop.py: browser tools are gated, documents are created strictly for gemma (local patch, not in the image)"
+  ],
+  [
+   "Catalog",
+   "927 small GGUF models collected from Hugging Face with their cards; 16 shortlisted, 5 downloaded and tested here; 3 added (qwen3.5-4b, minicpm5-2b, virbiusguard)"
+  ],
+  [
+   "Tooling",
+   "suite.py phase 3: job checks (jobs.py) for routing, tool calls, code, guard verdicts and drafters"
+  ],
+  [
+   "Guard",
+   "virbiusguard checks every Odysseus tool call; it moved to the CPU after the suite run, so it never evicts the agent model"
+  ],
+  [
+   "Guard",
+   "Verdict from one token: a tool-call check takes about 45 ms with the prompt cached (TRIALS.md, section 2e); the suite numbers for the guard are from the GPU setting"
+  ],
+  [
+   "Backend",
+   "Six backend changes for the added models were tried and none was kept (BACKEND-PLAN.md)"
+  ]
+ ],
+ "commits": [
+  [
+   "d0ab9a678",
+   "10-06 14:18",
+   "local-tune: GPU overclock sweep (+16% decode), results report, and a branch README for local-1660ti"
+  ],
+  [
+   "f7c1ca43d",
+   "10-06 10:43",
+   "local-tune: results page leads with a plain-language summary, technical detail collapsed"
+  ],
+  [
+   "45d2e13e9",
+   "10-06 10:36",
+   "local-tune: document the q8_0 K / q4_0 V pair as change 3 and the 7B gateway setting"
+  ],
+  [
+   "bafd6a875",
+   "10-06 10:25",
+   "local-tune: KV precision trials, perplexity runner, and lab.py to run the suites on source changes"
+  ],
+  [
+   "afbf9a20c",
+   "10-06 10:25",
+   "CUDA: build the q8_0 K / q4_0 V attention pair by default"
+  ],
+  [
+   "328ff74bd",
+   "10-06 05:46",
+   "local-tune: close out the backlog leads - ngram-simple on the 7B with long answers, draft types, blocked items"
+  ],
+  [
+   "e42c95cda",
+   "10-06 05:29",
+   "local-tune: ledger.py builds the results page with a decision ledger and trial charts"
+  ],
+  [
+   "6b3297755",
+   "10-06 05:20",
+   "local-tune: backlog trials - GPU layer counts, ngram-simple on code edits, draft model, switches with no gain"
+  ],
+  [
+   "cf14ecd26",
+   "10-05 23:24",
+   "local-tune: record the trial plan, the baseline correction and the untested backlog"
+  ],
+  [
+   "f40988912",
+   "10-05 23:01",
+   "local-tune: document the GTX 16xx kernel selection change"
+  ],
+  [
+   "efb8f377e",
+   "10-05 22:51",
+   "local-tune: KV matrix and kernel comparison scripts with live views, timing logs and results"
+  ],
+  [
+   "a260d811e",
+   "10-05 22:51",
+   "cuda: use non-tensor-core kernels on Turing GPUs without tensor cores"
+  ],
+  [
+   "155d646a0",
+   "10-05 19:34",
+   "local-tune: build/bench scripts and results for Ryzen 7600X + GTX 1660 Ti"
+  ],
+  [
+   "52b730eb4",
+   "10-05 19:34",
+   "qwen35: skip fused raw-gate GDN path on CPU-resident layers on x86"
+  ]
+ ]
+}

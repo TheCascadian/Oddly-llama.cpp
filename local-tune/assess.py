@@ -1,0 +1,358 @@
+#!/usr/bin/env python3
+"""One report of where the machine stands: hardware, every change with its before and after, every model old and new.
+assess.py [new-run] [base-run]    default: shortlist e2e (suite.py run names)
+Writes ASSESSMENT.md, img/hero.svg (+ hero.png when rsvg-convert is installed), img/models.svg and results/assess.json.
+What is reported is listed in assess.conf; the numbers are read from results/. Models are sorted by run:
+in both runs = kept, only in the new run = added, unless assess.conf names it as rejected; dropped and excluded models are named there too."""
+import csv, json, os, re, shutil, statistics, subprocess, sys
+from html import escape as esc
+import jobs, watch
+from watch import R
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+STATUS = dict(kept="Kept", new="Added", rejected="Tested, not added", dropped="Dropped", excluded="Excluded")
+CANDIDATE = ("new", "rejected")
+COL = dict(kept="#58a6ff", new="#3fb950", rejected="#f85149", dropped="#7d8590", excluded="#a78bda", bg="#0d1117", panel="#161b22", line="#30363d",
+           text="#e6edf3", dim="#9198a1", before="#6e7681", after="#f0883e")
+
+
+# ---- reading results ----
+
+def rows(name):
+    try:
+        return list(csv.reader(open(os.path.join(R, name), errors="replace")))
+    except OSError:
+        return []
+
+
+def compare_rows(plan):
+    out = {}
+    for r in rows(f"compare-{plan}.csv"):
+        try:
+            out[(r[0], "pp" if int(r[-8]) else "tg", int(r[-6]))] = float(r[-2])
+        except (ValueError, IndexError):
+            pass
+    return out
+
+
+def suite_rows(run):
+    return {(r[0], r[1]): ",".join(r[2:]) for r in rows(f"suite-{run}.csv") if len(r) >= 3}
+
+
+def ref(s):
+    """Value behind one assess.conf reference, None when the result is not there."""
+    kind, _, rest = s.partition(":")
+    try:
+        if kind == "bench":
+            f, model, ngl, test = rest.split(":")
+            return next(float(r[-2]) for r in rows(f + ".csv") if os.path.basename(r[5]).startswith(model) and r[17] == ngl and bool(int(r[-8])) == (test == "pp"))
+        if kind == "compare":
+            plan, rest = rest.split(":", 1)
+            label, _, test = rest.rpartition(":")
+            t, d = test.split("@")
+            return compare_rows(plan)[(label, t, int(d))]
+        if kind == "spec":
+            label, variant, prompt = rest.split(":")
+            return statistics.mean(float(r[4]) for r in rows(f"spec-{label}.csv") if r[:2] == [variant, prompt])
+        if kind == "log":
+            f, step = rest.split(":")
+            return [float(m[1]) for m in (re.search(rf"TEST {re.escape(step)} PASS tg=([\d.]+)", l) for l in watch.read(f + ".log")) if m][-1]
+        if kind == "suite":
+            run, model, metric = rest.split(":")
+            return float(suite_rows(run)[(model, metric)])
+    except (StopIteration, KeyError, IndexError, ValueError, statistics.StatisticsError):
+        return None
+
+
+def conf():
+    out, sec = dict(changes=[], models=[], edits=[]), None
+    for ln in open(os.path.join(HERE, "assess.conf")).read().splitlines():
+        if not ln.strip() or ln.startswith("#"):
+            continue
+        if ln.startswith("["):
+            sec = ln.strip("[] ")
+        elif sec:
+            out[sec].append([x.strip() for x in ln.split("|")])
+        else:
+            k, _, v = ln.partition(":")
+            out[k.strip()] = v.strip()
+    return out
+
+
+def machine():
+    smi = lambda q: subprocess.run(["nvidia-smi", f"--query-gpu={q}", "--format=csv,noheader,nounits"], capture_output=True, text=True).stdout.strip().split(", ")
+    cpu = open("/proc/cpuinfo").read()
+    m = dict(cpu=re.sub(r" \d+-Core Processor", "", (re.search(r"model name\s*:\s*(.+)", cpu) or [0, "unknown"])[1]),
+             cores=len(set(re.findall(r"core id\s*:\s*(\d+)", cpu))), threads=os.cpu_count(),
+             ram_gb=round(int(re.search(r"MemTotal:\s+(\d+)", open("/proc/meminfo").read())[1]) / 2**20),
+             kernel=os.uname().release, commit=subprocess.run(["git", "-C", HERE, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip(),
+             branch=subprocess.run(["git", "-C", HERE, "branch", "--show-current"], capture_output=True, text=True).stdout.strip())
+    try:
+        g = smi("name,memory.total,driver_version,power.limit,power.default_limit")
+        m.update(gpu=g[0].replace("NVIDIA GeForce ", ""), vram_mb=int(g[1]), driver=g[2], power_w=round(float(g[3])), power_stock_w=round(float(g[4])))
+    except (OSError, IndexError, ValueError):
+        m.update(gpu="no NVIDIA GPU", vram_mb=0, driver="-", power_w=0, power_stock_w=0)
+    try:   # gpu-push.py appends one JSON object per saved state; the first is the newest
+        m["oc"] = json.JSONDecoder().raw_decode(open(os.path.join(R, "gpu-oc.json")).read())[0]
+    except (OSError, ValueError):
+        m["oc"] = None
+    return m
+
+
+def collect(new, base):
+    c = conf()
+    changes = []
+    for group, change, on, before, after, where in c["changes"]:
+        b, a = ref(before), ref(after)
+        changes.append(dict(group=group, change=change, on=on, before=b, after=a, where=where, src=f"{before.split(':')[1]}, {after.split(':')[1]}"))
+    models = []
+    sn, sb, bn = suite_rows(new), suite_rows(base), compare_rows(new)
+    try:
+        listed = json.load(open(os.path.join(R, f"suite-{new}.conf.json")))
+    except OSError:
+        listed = []
+    for m in listed:
+        n = m["name"]
+        if not any(k[0] == n for k in sn):
+            continue
+        f = lambda k: float(sn[(n, k)]) if (n, k) in sn and re.fullmatch(r"[\d.]+", sn[(n, k)]) else None
+        spec = (re.search(r"--spec-type (\S+)", m["args"]) or [0, ""])[1]
+        models.append(dict(name=n, status="kept" if any(k[0] == n for k in sb) else "new", type=m["type"], par=m["par"], spec=spec,
+                           gb=round(os.path.getsize(m["path"]) / 2**30, 2) if os.path.exists(m["path"]) else None,
+                           tg0=bn.get((n, "tg", 0)) or f("one_tps"), tg8=bn.get((n, "tg", 8192)), pp0=bn.get((n, "pp", 0)), one=f("one_tps"), all=f("all_tps"),
+                           items=f("items_s"), vram=f("vram"), load=f("load_s"), note=sn.get((n, "note"), ""),
+                           jobs={j: sn[(n, "job_" + j)].partition(",")[::2] for j in m.get("jobs", []) if (n, "job_" + j) in sn}))
+    for name, status, plan, label, why in c["models"]:
+        if plan == "suite":   # a model of the new run with a verdict
+            for m in models:
+                if m["name"] == name:
+                    m.update(status=status, note=why)
+            continue
+        r = compare_rows(plan)
+        models.append(dict(name=name, status=status, type="llm", par=None, spec="", gb=None, tg0=r.get((label, "tg", 0)), tg8=r.get((label, "tg", 8192)),
+                           pp0=r.get((label, "pp", 0)), one=None, all=None, items=None, vram=None, load=None, note=why, jobs={}))
+    tally = {}
+    for ln in open(os.path.join(HERE, c.get("trials", "../README.md"))).read().splitlines():
+        m = re.match(r"\| [A-Z]\d+ \|[^|]*\|[^|]*\| ([^|]+) \|", ln)
+        if m:
+            tally[m[1].strip()] = tally.get(m[1].strip(), 0) + 1
+    log = subprocess.run(["git", "-C", HERE, "log", f"--since={c['since']}", "--format=%h|%ad|%s", "--date=format:%m-%d %H:%M"], capture_output=True, text=True).stdout.splitlines()
+    return dict(title=c["title"], since=c["since"], new_run=new, base_run=base, machine=machine(), changes=changes, models=models, tally=tally,
+                edits=c["edits"], commits=[l.split("|", 2) for l in log])
+
+
+# ---- words and numbers ----
+
+def num(v, unit=""):
+    return "-" if v is None else (f"{v:,.0f}" if v >= 100 else f"{v:.1f}") + unit
+
+
+def gain(b, a):
+    if not b or not a:
+        return "-"
+    return f"{a / b:.1f}x" if a / b >= 1.5 else f"{(a / b - 1) * 100:+.0f}%"
+
+
+# ---- drawing ----
+
+class Svg:
+    def __init__(s, w, h):
+        s.w, s.h, s.o = w, h, []
+
+    def rect(s, x, y, w, h, fill, r=0, op=1, stroke=None):
+        s.o.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{max(w, 0):.1f}" height="{h:.1f}" rx="{r}" fill="{fill}"' + (f' fill-opacity="{op}"' if op != 1 else "") + (f' stroke="{stroke}"' if stroke else "") + "/>")
+
+    def text(s, x, y, t, size=16, fill=None, weight=400, anchor="start"):
+        s.o.append(f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" fill="{fill or COL["text"]}" font-weight="{weight}" text-anchor="{anchor}">{esc(str(t))}</text>')
+
+    def line(s, x1, y1, x2, y2, stroke, dash=""):
+        s.o.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{stroke}" stroke-width="1.5"' + (f' stroke-dasharray="{dash}"' if dash else "") + "/>")
+
+    def save(s, path):
+        open(path, "w").write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s.w} {s.h}" width="{s.w}" height="{s.h}" font-family="Inter, \'Noto Sans\', \'DejaVu Sans\', Arial, sans-serif">'
+                              f'<rect width="{s.w}" height="{s.h}" fill="{COL["bg"]}"/>' + "".join(s.o) + "</svg>\n")
+
+
+def chart_models(models):
+    return sorted([m for m in models if m["tg0"]], key=lambda m: (m["status"] in CANDIDATE, list(STATUS).index(m["status"]), -m["tg0"]))
+
+
+def model_panel(s, x, y, w, models, h=0, row=46):
+    """Writing speed per model: old models (kept, dropped, excluded) then the new ones as the second series. Returns the height used."""
+    ms = chart_models(models)
+    natural = 96 + row * len(ms) + 38 * any(m["status"] in CANDIDATE for m in ms) + 34
+    s.rect(x, y, w, max(h, natural), COL["panel"], 14, stroke=COL["line"])
+    s.text(x + 24, y + 38, "Models: writing speed, tokens per second", 22, weight=700)
+    lx = x + 24
+    for k in ("kept", "dropped", "excluded", "new", "rejected"):
+        s.rect(lx, y + 56, 14, 14, COL[k], 3); s.text(lx + 20, y + 68, STATUS[k], 14, COL["dim"]); lx += 44 + 8.2 * len(STATUS[k])
+    s.rect(lx + 6, y + 56, 30, 14, COL["dim"], 3); s.text(lx + 42, y + 68, "empty", 14, COL["dim"])
+    s.rect(lx + 96, y + 60, 30, 7, COL["dim"], 3, .55); s.text(lx + 132, y + 68, "8K in context", 14, COL["dim"])
+    bx, bw = x + 290, w - 290 - 230
+    top = max(m["tg0"] for m in ms)
+    yy, worker = y + 96, next((m for m in ms if m["status"] == "kept" and (m["par"] or 1) > 1 and m["type"] == "llm"), None)
+    if worker:   # drawn first so the numbers stay readable on top of it
+        wx, end = bx + bw * worker["tg0"] / top, y + natural - 34
+        s.line(wx, yy - 6, wx, end + 2, COL["kept"], "5 5")
+        s.text(wx, end + 20, f"current swarm worker ({worker['name']})", 12, COL["kept"], anchor="middle")
+    for i, m in enumerate(ms):
+        if m["status"] in CANDIDATE and (i == 0 or ms[i - 1]["status"] not in CANDIDATE):
+            s.line(x + 24, yy + 8, x + w - 24, yy + 8, COL["line"]); s.text(x + 24, yy + 30, "NEW CANDIDATES, SAME TESTS", 13, COL["new"], 700); yy += 38
+        c = COL[m["status"]]
+        s.text(x + 24, yy + 18, m["name"], 16, weight=600)
+        s.text(x + 24, yy + 35, (f"{m['gb']} GB  ·  " if m["gb"] else "") + STATUS[m["status"]].lower(), 12, COL["dim"])
+        s.rect(bx, yy + 4, bw * m["tg0"] / top, 16, c, 4)
+        if m["tg8"]:
+            s.rect(bx, yy + 24, bw * m["tg8"] / top, 8, c, 3, .55)
+        s.text(bx + bw * m["tg0"] / top + 10, yy + 19, num(m["tg0"]), 17, weight=700)
+        s.text(x + w - 24, yy + 19, f"reads {num(m['pp0'])}/s" if m["pp0"] else "served speed", 13, COL["dim"], anchor="end")
+        s.text(x + w - 24, yy + 36, f"at 8K: {num(m['tg8'])}" if m["tg8"] else "", 13, COL["dim"], anchor="end")
+        yy += row
+    return natural
+
+
+def change_panel(s, x, y, w, changes, h):
+    s.rect(x, y, w, h, COL["panel"], 14, stroke=COL["line"])
+    s.text(x + 24, y + 38, "Backend, kernels and settings: before and after", 22, weight=700)
+    s.rect(x + 24, y + 56, 14, 14, COL["before"], 3); s.text(x + 44, y + 68, "before", 14, COL["dim"])
+    s.rect(x + 110, y + 56, 14, 14, COL["after"], 3); s.text(x + 130, y + 68, "after  ·  tokens per second, each row on its own scale", 14, COL["dim"])
+    ok = [c for c in changes if c["before"] and c["after"]]
+    heads = len({c["change"] for c in ok})
+    row = min(40, (h - 96 - heads * 30) / max(len(ok), 1))
+    yy, last, bx, bw = y + 88, None, x + 24, w - 48 - 96
+    for c in ok:
+        if c["change"] != last:
+            s.text(x + 24, yy + 20, c["change"], 15, weight=700); s.text(x + w - 24, yy + 20, c["where"], 12, COL["dim"], anchor="end")
+            yy += 30; last = c["change"]
+        s.rect(bx, yy, bw * c["before"] / c["after"], 9, COL["before"], 3)
+        s.rect(bx, yy + 11, bw, 9, COL["after"], 3)
+        s.text(bx, yy + 33, f"{c['on']}   {num(c['before'])} to {num(c['after'])}", 12, COL["dim"])
+        s.text(x + w - 24, yy + 19, gain(c["before"], c["after"]), 20, COL["after"], 700, "end")
+        yy += row
+
+
+def hero(d, path):
+    mc, W, P = d["machine"], 1600, 40
+    left_w = 860
+    probe = Svg(W, 10)
+    ph = model_panel(probe, P, 0, left_w, d["models"])
+    ok = [c for c in d["changes"] if c["before"] and c["after"]]
+    ph = max(ph, 96 + len({c["change"] for c in ok}) * 30 + len(ok) * 40 + 10)
+    H = 272 + ph + 24 + 60 + 25 * max(len(served_lines(d)), len(job_lines(d)), 6) + P
+    s = Svg(W, H)
+    s.text(P, 74, d["title"], 44, weight=800)
+    s.text(P, 108, f"Every change since {d['since'][:10]}, measured on this one machine. Higher is better everywhere.", 18, COL["dim"])
+    s.text(W - P, 74, f"{d['machine']['branch']} @ {mc['commit']}", 18, COL["dim"], anchor="end")
+    oc = mc["oc"]
+    tiles = [("GPU", mc["gpu"], f"{mc['vram_mb'] / 1024:.0f} GB VRAM"), ("CPU", mc["cpu"].replace("AMD ", ""), f"{mc['cores']} cores  ·  {mc['threads']} threads"),
+             ("MEMORY", f"{mc['ram_gb']} GB RAM", "system memory"), ("POWER LIMIT", f"{mc['power_w']} W", f"stock {mc['power_stock_w']} W"),
+             ("OVERCLOCK", f"mem +{oc['mem']}  core +{oc['core']}" if oc else "stock clocks", "offsets in MHz, perplexity-checked" if oc else "no saved offsets"),
+             ("SOFTWARE", f"driver {mc['driver']}", f"Linux {mc['kernel'].split('-')[0]}  ·  CUDA")]
+    tw = (W - 2 * P - 5 * 14) / 6
+    for i, (k, v, sub) in enumerate(tiles):
+        tx = P + i * (tw + 14)
+        s.rect(tx, 136, tw, 112, COL["panel"], 14, stroke=COL["line"])
+        s.text(tx + 18, 166, k, 12, COL["dim"], 700); s.text(tx + 18, 200, v, 21 if len(v) < 19 else 17, weight=700); s.text(tx + 18, 228, sub, 12.5, COL["dim"])
+    y = 272
+    model_panel(s, P, y, left_w, d["models"], ph)
+    change_panel(s, P + left_w + 20, y, W - 2 * P - left_w - 20, d["changes"], ph)
+    y += ph + 24
+    cw = (W - 2 * P - 2 * 20) / 3
+    ch = 60 + 25 * max(len(served_lines(d)), len(job_lines(d)), 6)
+    cards = [("SERVED THROUGH THE GATEWAY", served_lines(d)), ("JOB CHECKS (SCORE PER JOB)", job_lines(d)), ("TRIALS AND EDITS", tally_lines(d))]
+    for i, (k, lines) in enumerate(cards):
+        cx = P + i * (cw + 20)
+        s.rect(cx, y, cw, ch, COL["panel"], 14, stroke=COL["line"])
+        s.text(cx + 22, y + 34, k, 13, COL["dim"], 700)
+        for j, (a, b, col) in enumerate(lines):
+            s.text(cx + 22, y + 64 + j * 25, a, 15); s.text(cx + cw - 22, y + 64 + j * 25, b, 15, col, 700, "end")
+    s.save(path)
+
+
+def served_lines(d):
+    out = []
+    for m in d["models"]:
+        if m["all"]:
+            out.append((f"{m['name']}, {m['par']} slots busy", f"{num(m['all'])} t/s", COL[m["status"]]))
+        elif m["items"]:
+            out.append((f"{m['name']}", f"{num(m['items'])} items/s", COL[m["status"]]))
+    return sorted(out, key=lambda r: "items" in r[1])
+
+
+def job_lines(d):
+    out = []
+    for m in d["models"]:
+        if m["jobs"]:
+            out.append((m["name"], "   ".join(f"{j} {sc}" for j, (sc, _) in m["jobs"].items()), COL[m["status"]]))
+    return out
+
+
+def tally_lines(d):
+    out = [(f"{k}", str(v), COL["after"] if k in ("Applied", "Saved") else COL["dim"]) for k, v in sorted(d["tally"].items(), key=lambda kv: -kv[1])]
+    return [(f"Trials measured", str(sum(d["tally"].values())), COL["text"])] + out[:4] + [("Commits on the branch", str(len(d["commits"])), COL["text"])]
+
+
+def models_svg(d, path):
+    probe = Svg(900, 10)
+    h = model_panel(probe, 20, 20, 860, d["models"])
+    s = Svg(900, h + 40)
+    model_panel(s, 20, 20, 860, d["models"])
+    s.save(path)
+
+
+# ---- the page ----
+
+def markdown(d):
+    mc, oc = d["machine"], d["machine"]["oc"]
+    L = [f"# Assessment: {d['title']}", "",
+         f"State of the machine and of every change since {d['since'][:10]}. Generated by `local-tune/assess.py` from `local-tune/results/`; do not edit by hand, run it again.",
+         "All speeds are tokens per second on this one machine. Higher is better. Differences under about 3% are noise.", "",
+         "![Hardware, model speeds and backend gains in one picture](img/hero.png)", "",
+         "## Machine", "", "| Part | Value |", "|---|---|",
+         f"| GPU | {mc['gpu']}, {mc['vram_mb']} MiB, driver {mc['driver']} |", f"| CPU | {mc['cpu']}, {mc['cores']} cores, {mc['threads']} threads |",
+         f"| RAM | {mc['ram_gb']} GB |", f"| Power limit | {mc['power_w']} W (stock {mc['power_stock_w']} W) |",
+         f"| Overclock | " + (f"memory +{oc['mem']} MHz, core +{oc['core']} MHz, saved {oc['stamp']} |" if oc else "none saved |"),
+         f"| Build | branch `{mc['branch']}` at `{mc['commit']}`, Linux {mc['kernel']} |", "",
+         "## Changes, before and after", "", "| Area | Change | Measured on | Before | After | Gain | Where | Result files |", "|---|---|---|---|---|---|---|---|"]
+    for c in d["changes"]:
+        L.append(f"| {c['group']} | {c['change']} | {c['on']} | {num(c['before'])} | {num(c['after'])} | **{gain(c['before'], c['after'])}** | `{c['where']}` | `{c['src']}` |")
+    L += ["", "## Models", "",
+          f"Kept and new models were run together in suite `{d['new_run']}`. Dropped and excluded models keep their last measurement.",
+          "Write and read are llama-bench speeds with the model's own settings. One chat and all slots are measured through the gateway.", "",
+          "![Writing speed of old and new models](img/models.svg)", "",
+          "| Model | Status | File | Writes | Writes at 8K | Reads | One chat | All slots | Items/s | VRAM | Note |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+    order = sorted(d["models"], key=lambda m: (list(STATUS).index(m["status"]), -(m["tg0"] or 0)))
+    for m in order:
+        slots = f"{num(m['all'])} ({m['par']})" if m["all"] else "-"
+        L.append(f"| {m['name']} | {STATUS[m['status']]} | {str(m['gb']) + ' GB' if m['gb'] else '-'} | {num(m['tg0'])} | {num(m['tg8'])} | {num(m['pp0'])} | {num(m['one'])} | {slots} | {num(m['items'])} | "
+                 f"{num(m['vram'], ' MiB') if m['vram'] else '-'} | {m['spec'] + '. ' if m['spec'] else ''}{m['note']} |")
+    L += ["", "## Job checks", "", "Small fixed tests from `jobs.py`. They show if a model can do the job at all; they do not rank two models that both pass.", "",
+          "| Model | Status | Job | Score | Detail |", "|---|---|---|---|---|"]
+    for m in order:
+        for j, (score, note) in m["jobs"].items():
+            L.append(f"| {m['name']} | {STATUS[m['status']]} | {jobs.TITLE[j]} | **{score}** | {note} |")
+    L += ["", "## Trials", "", f"{sum(d['tally'].values())} trials have a verdict in the [branch README](../README.md): " + ", ".join(f"{v} {k.lower()}" for k, v in d["tally"].items()) + ". Each one is described in [TRIALS.md](TRIALS.md).", "",
+          "## Edits without a speed number", "", "| Area | What changed |", "|---|---|"] + [f"| {a} | {b} |" for a, b in d["edits"]]
+    L += ["", "## Commits in the period", "", "| Commit | When | Subject |", "|---|---|---|"] + [f"| `{h}` | {t} | {sub} |" for h, t, sub in d["commits"]]
+    L += ["", "## Run it yourself", "", "```", "cp local-tune/models.example.conf local-tune/models.conf   # list your GGUF files",
+          "python3 local-tune/gateway.py &                             # serves them on :8700", "python3 local-tune/watch.py                                 # live view, in a second terminal",
+          "python3 local-tune/suite.py run base                        # speed, served speed and job checks",
+          "# add a model line to models.conf, restart the gateway, then:", "python3 local-tune/suite.py run next",
+          "python3 local-tune/assess.py next base                      # this page and the picture", "```", "",
+          "`assess.conf` lists the before and after pairs. Its numbers are references to result files, so point them at your own runs."]
+    return "\n".join(L) + "\n"
+
+
+if __name__ == "__main__":
+    a = [x for x in sys.argv[1:] if not x.startswith("-")]
+    d = collect(a[0] if a else "shortlist", a[1] if len(a) > 1 else "e2e")
+    os.makedirs(os.path.join(HERE, "img"), exist_ok=True)
+    json.dump(d, open(os.path.join(R, "assess.json"), "w"), indent=1)
+    open(os.path.join(HERE, "ASSESSMENT.md"), "w").write(markdown(d))
+    hero(d, os.path.join(HERE, "img", "hero.svg")); models_svg(d, os.path.join(HERE, "img", "models.svg"))
+    if shutil.which("rsvg-convert"):
+        subprocess.run(["rsvg-convert", "-o", os.path.join(HERE, "img", "hero.png"), os.path.join(HERE, "img", "hero.svg")], check=True)
+    else:
+        print("rsvg-convert not found: img/hero.png not written, img/hero.svg is the same picture")
+    missing = [c["on"] for c in d["changes"] if not (c["before"] and c["after"])]
+    print(f"{len(d['changes'])} changes ({len(missing)} without numbers{': ' + '; '.join(missing) if missing else ''}), {len(d['models'])} models")

@@ -1,0 +1,5 @@
+title: every gateway model with its own settings
+args: -t 6 -fa 1 -d 0,4096,8192 -p 512 -n 64 -r 3
+qwythos-9b | build-live | | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 25 -ctk q8_0 -ctv q8_0
+deepseek-coder-1.3b | build-live | | -m /home/wrekt/odysseus-local/models/deepseek-coder-1.3b-base-Q8_0.gguf -ngl 99 -ctk q8_0 -ctv q8_0
+gemma4-e2b | build-live | | -m /home/wrekt/odysseus-local/models/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf -ngl 99 -ctk q8_0 -ctv q8_0

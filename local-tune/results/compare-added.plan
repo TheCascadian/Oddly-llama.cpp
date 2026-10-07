@@ -1,0 +1,5 @@
+title: every gateway model with its own settings
+args: -t 6 -fa 1 -d 0,4096,8192 -p 512 -n 64 -r 3
+minicpm5-2b | build-live | | -m /home/wrekt/odysseus-local/models/MiniCPM5-2B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q8_0
+qwen3.5-4b | build-live | | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ngl 99 -ctk q8_0 -ctv q8_0
+virbiusguard | build-live | | -m /home/wrekt/odysseus-local/models/virbiusguard-v2.0-q4_k_m.gguf -ngl 99 -ctk f16 -ctv f16

@@ -1,0 +1,7 @@
+title: candidate models from Hugging Face against the current ones  (all layers on GPU, q8 KV)
+args: -t 6 -fa 1 -ngl 99 -ctk q8_0 -ctv q8_0 -d 0,8192 -p 512 -n 32 -r 3
+qwen2.5-3b Q5_K_M (current) | build-live | | -m /home/wrekt/odysseus-local/models/qwen2.5-3b-instruct-q5_k_m.gguf
+gemma4-e2b QAT Q4_K_XL | build-live | | -m /home/wrekt/odysseus-local/models/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf
+sharp-minicpm 2B Q6_K_XL | build-live | | -m /home/wrekt/odysseus-local/models/Sharp-MiniCPM5-2B-Q6_K_XL.gguf
+agents-a1 4B Q4_K_M | build-live | | -m /home/wrekt/odysseus-local/models/Agents-A1-4B-Q4_K_M.gguf
+ternary-bonsai 8B PQ2_0 | build-live | | -m /home/wrekt/odysseus-local/models/Ternary-Bonsai-8B-PQ2_0.gguf

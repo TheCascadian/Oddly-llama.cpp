@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Live dashboard for the local-tune runners. Read-only; run: local-tune/watch.py
-Without a label it follows the newest run: kvmatrix.sh, compare.py, spectest.py or ppl.py.
+Without a label it follows the newest run: kvmatrix.sh, compare.py, suite.py, spectest.py or ppl.py.
 With results/sequence.txt (lines: "bench|kv <label> <title>") it also shows every stage of a queued run.
 local-tune/watch.py <label> shows a saved run: a compare plan, a spectest label or the KV table of a finished stage."""
 import csv, os, re, sys, time
@@ -48,6 +48,18 @@ def status(log):
             vram, ram = int(m[1]), int(m[2])
             peak[cur] = max(peak.get(cur, 0), vram)
     return cur, done, failed, vram, ram, peak
+
+
+def machine():
+    """'GPU name NGB  ·  CPU name' of this computer, for view titles."""
+    import subprocess
+    try:
+        n, mb = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=3).stdout.splitlines()[0].split(", ")
+        g = f"{n.replace('NVIDIA GeForce ', '')} {round(int(mb) / 1024)}GB"
+    except Exception:
+        g = "no NVIDIA GPU"
+    c = re.search(r"model name\s*:\s*(.+)", open("/proc/cpuinfo").read())
+    return f"{g}  ·  {re.sub(r' \d+-Core Processor| with .*|AMD |Intel\(R\) Core\(TM\) ', '', c[1]) if c else 'unknown CPU'}"
 
 
 def gpu():
@@ -238,7 +250,7 @@ def render(stem="kvmatrix", st=()):
         if n and not finished:
             r = e / n * (6 - n)
             eta = f"   ~{int(r // 60)}m left"
-    L = [f"{B}  KV-CACHE BENCHMARK{X}  {D}DeepSeek-R1 7B Q4_K_S  ·  GTX 1660 Ti 6GB  ·  Ryzen 5 7600X{X}", ""]
+    L = [f"{B}  KV-CACHE BENCHMARK{X}  {D}DeepSeek-R1 7B Q4_K_S  ·  {machine()}{X}", ""]
     live = next((x for x in st if x[4] == "run"), None)
     if st and stem == "kvmatrix":
         if not (live and live[0] == "kv" and mtime("kvmatrix.log") > max([mtime(f"{x[1]}.csv" if x[0] == "bench" else f"kvmatrix-{x[1]}.csv") for x in st if x[4] == "done"] or [0])):
@@ -270,13 +282,15 @@ def render(stem="kvmatrix", st=()):
 
 
 def newest():
-    """(kind, name) of the run whose files changed last; kind is kv, compare, spec or ppl."""
+    """(kind, name) of the run whose files changed last; kind is kv, compare, suite, spec or ppl."""
     best = ("kv", None, max(mtime("kvmatrix.log"), mtime("kvmatrix.csv")))
     for f in os.listdir(R):
         # spec logs are named per variant, so only the csv gives the label
-        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$|ppl-(.+?)\.(?:log|csv)$|(?!kvmatrix|compare-|spec-|ppl-)(.+?)\.log$", f)
+        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$|ppl-(.+?)\.(?:log|csv)$|(?!kvmatrix|compare-|spec-|ppl-|suite-)(.+?)\.log$", f)
         if m and mtime(f) > best[2]:
             best = ("compare" if m[1] else "spec" if m[2] else "ppl" if m[3] else "bench", m[1] or m[2] or m[3] or m[4], mtime(f))
+    if best[0] == "compare" and mtime(f"suite-{best[1]}.log"):   # suite.py runs its first phase through compare.py
+        return "suite", best[1]
     return best[:2]
 
 
@@ -345,8 +359,8 @@ def other_view(kind, name):
     if kind == "bench":
         log = read(name + ".log")
         return ("\n".join(render_bench([("bench", name, name, 0, "done")]) or ["  " + l for l in log[-12:]]) + "\n\n" + "\n".join(gpu_panel()), 0)
-    import compare, ppl, spectest
-    return {"compare": compare, "spec": spectest, "ppl": ppl}[kind].render(name)
+    import compare, ppl, spectest, suite
+    return {"compare": compare, "spec": spectest, "ppl": ppl, "suite": suite}[kind].render(name)
 
 
 if __name__ == "__main__":
@@ -356,7 +370,7 @@ if __name__ == "__main__":
     clear = "" if once else "\033[H\033[J"
     try:
         while True:
-            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv"), ("ppl", f"ppl-{saved[0]}.plan")) if mtime(f)), ("kv", None))
+            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("suite", f"suite-{saved[0]}.log"), ("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv"), ("ppl", f"ppl-{saved[0]}.plan")) if mtime(f)), ("kv", None))
             if kind != "kv":
                 # stays open after a run ends, so it moves on to the next run when one starts
                 sys.stdout.write(clear + other_view(kind, name)[0] + "\n"); sys.stdout.flush()

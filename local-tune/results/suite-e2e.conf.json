@@ -1,0 +1,80 @@
+[
+ {
+  "name": "qwythos-9b",
+  "path": "/home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf",
+  "args": "-ngl 25 --parallel 1 -c 16384 -ctk q8_0 -ctv q8_0 -fa on --spec-type ngram-simple --no-mmproj-offload --mmproj /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/mmproj-Qwythos-9B-Claude-Mythos-5-1M-F16.gguf",
+  "type": "llm",
+  "vram": 4500,
+  "port": 8201,
+  "idle": 1800,
+  "jobs": [],
+  "par": 1,
+  "ctx": 16384,
+  "shared": false
+ },
+ {
+  "name": "deepseek-r1-distill-7b",
+  "path": "/home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf",
+  "args": "-ngl 99 --parallel 1 -c 16384 -ctk q8_0 -ctv q4_0 -fa on",
+  "type": "llm",
+  "vram": 5000,
+  "port": 8202,
+  "idle": 1800,
+  "jobs": [],
+  "par": 1,
+  "ctx": 16384,
+  "shared": false
+ },
+ {
+  "name": "deepseek-coder-1.3b",
+  "path": "/home/wrekt/odysseus-local/models/deepseek-coder-1.3b-base-Q8_0.gguf",
+  "args": "-ngl 99 --parallel 4 -c 16384 -ctk q8_0 -ctv q8_0 -fa on --spec-type ngram-simple",
+  "type": "completion",
+  "vram": 2800,
+  "port": 8205,
+  "idle": 900,
+  "jobs": [],
+  "par": 4,
+  "ctx": 4096,
+  "shared": false
+ },
+ {
+  "name": "gemma4-e2b",
+  "path": "/home/wrekt/odysseus-local/models/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf",
+  "args": "-ngl 99 --parallel 8 -kvu -c 32768 -ctk q8_0 -ctv q8_0 -fa on --jinja",
+  "type": "llm",
+  "vram": 3400,
+  "port": 8206,
+  "idle": 900,
+  "jobs": [],
+  "par": 8,
+  "ctx": 32768,
+  "shared": true
+ },
+ {
+  "name": "embeddinggemma-300m",
+  "path": "/home/wrekt/odysseus-local/models/embeddinggemma-300M-Q8_0.gguf",
+  "args": "--embedding -ngl 99 -c 2048",
+  "type": "embedding",
+  "vram": 500,
+  "port": 8207,
+  "idle": 0,
+  "jobs": [],
+  "par": 1,
+  "ctx": 2048,
+  "shared": false
+ },
+ {
+  "name": "qwen3-reranker-0.6b",
+  "path": "/home/wrekt/odysseus-local/models/qwen3-reranker-0.6b-q8_0.gguf",
+  "args": "--reranking -ngl 99 -c 8192",
+  "type": "rerank",
+  "vram": 1900,
+  "port": 8208,
+  "idle": 900,
+  "jobs": [],
+  "par": 1,
+  "ctx": 8192,
+  "shared": false
+ }
+]

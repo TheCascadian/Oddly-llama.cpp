@@ -1,0 +1,24 @@
+qwythos-9b,load_s,1.5
+qwythos-9b,one_tps,26.2
+qwythos-9b,first_ms,69
+qwythos-9b,vram,4293
+deepseek-coder-1.3b,load_s,0.5
+deepseek-coder-1.3b,one_tps,185.1
+deepseek-coder-1.3b,first_ms,8
+deepseek-coder-1.3b,all_tps,469.4
+deepseek-coder-1.3b,vram,3168
+gemma4-e2b,load_s,1.5
+gemma4-e2b,one_tps,133.3
+gemma4-e2b,first_ms,21
+gemma4-e2b,all_tps,351.6
+gemma4-e2b,items_s,18.4
+gemma4-e2b,note,forced-label classify
+gemma4-e2b,vram,1603
+embeddinggemma-300m,load_s,1.0
+embeddinggemma-300m,items_s,433.1
+embeddinggemma-300m,note,768 dimensions
+embeddinggemma-300m,vram,428
+qwen3-reranker-0.6b,load_s,1.1
+qwen3-reranker-0.6b,items_s,39.5
+qwen3-reranker-0.6b,note,right document ranked first
+qwen3-reranker-0.6b,vram,1896

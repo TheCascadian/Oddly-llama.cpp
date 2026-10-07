@@ -1,0 +1,69 @@
+qwythos-9b,load_s,1.5
+qwythos-9b,one_tps,26.1
+qwythos-9b,first_ms,70
+qwythos-9b,vram,4322
+deepseek-coder-1.3b,load_s,0.5
+deepseek-coder-1.3b,one_tps,183.4
+deepseek-coder-1.3b,first_ms,7
+deepseek-coder-1.3b,all_tps,465.1
+deepseek-coder-1.3b,vram,3155
+gemma4-e2b,load_s,1.5
+gemma4-e2b,one_tps,132.4
+gemma4-e2b,first_ms,30
+gemma4-e2b,all_tps,348.8
+gemma4-e2b,items_s,18.9
+gemma4-e2b,note,forced-label classify
+gemma4-e2b,vram,1587
+embeddinggemma-300m,load_s,1.0
+embeddinggemma-300m,items_s,454.3
+embeddinggemma-300m,note,768 dimensions
+embeddinggemma-300m,vram,428
+qwen3-reranker-0.6b,load_s,1.0
+qwen3-reranker-0.6b,items_s,38.9
+qwen3-reranker-0.6b,note,right document ranked first
+qwen3-reranker-0.6b,vram,1896
+gemma4-e2b-mtp,load_s,2.0
+gemma4-e2b-mtp,one_tps,125.0
+gemma4-e2b-mtp,first_ms,21
+gemma4-e2b-mtp,all_tps,324.5
+gemma4-e2b-mtp,items_s,15.3
+gemma4-e2b-mtp,note,forced-label classify
+gemma4-e2b-mtp,vram,1909
+minicpm5-2b,load_s,1.0
+minicpm5-2b,one_tps,133.1
+minicpm5-2b,first_ms,13
+minicpm5-2b,all_tps,305.4
+minicpm5-2b,items_s,23.9
+minicpm5-2b,note,forced-label classify
+minicpm5-2b,vram,2125
+qwen3.5-4b,load_s,1.0
+qwen3.5-4b,one_tps,77.6
+qwen3.5-4b,first_ms,37
+qwen3.5-4b,vram,3151
+qwen3.5-4b-mtp,load_s,1.5
+qwen3.5-4b-mtp,one_tps,63.3
+qwen3.5-4b-mtp,first_ms,38
+qwen3.5-4b-mtp,vram,3688
+sharp-spark-4b,load_s,1.0
+sharp-spark-4b,one_tps,65.3
+sharp-spark-4b,first_ms,42
+sharp-spark-4b,vram,4038
+virbiusguard,load_s,1.0
+virbiusguard,one_tps,312.6
+virbiusguard,first_ms,6
+virbiusguard,all_tps,639.7
+virbiusguard,vram,1388
+qwythos-9b,job_tools,6/6,every call valid
+qwythos-9b,job_code,3/4,functions that pass their asserts
+deepseek-coder-1.3b,job_code,3/4,functions that pass their asserts
+gemma4-e2b,job_classify,16/16,7.9 items/s
+gemma4-e2b,job_tools,6/6,every call valid
+gemma4-e2b-mtp,job_draft,0.83x,TEXT DIFFERS; one stream 133 to 110 t/s; 8 slots 340 to 288 t/s
+minicpm5-2b,job_classify,16/16,10.5 items/s
+minicpm5-2b,job_tools,6/6,every call valid
+qwen3.5-4b,job_tools,6/6,every call valid
+qwen3.5-4b,job_code,4/4,functions that pass their asserts
+qwen3.5-4b-mtp,job_draft,0.65x,same text; one stream 78 to 51 t/s
+sharp-spark-4b,job_code,4/4,functions that pass their asserts
+sharp-spark-4b,job_tools,3/6,missed run_shell create_document read_file
+virbiusguard,job_guard,11/12,1 attacks missed; 0 safe inputs blocked; 151 ms per verdict
