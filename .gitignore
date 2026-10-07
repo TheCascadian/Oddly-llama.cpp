@@ -159,10 +159,11 @@ AGENTS.local.md
 
 # local-tune: per-machine state, generated archives, local agent config
 /.claude/
-/local-tune/results/gpu-oc.json*
+/local-tune/results/**/gpu-oc.json*
 /local-tune/oc-kit.tar.gz
 /local-tune/oc-kit.zip
-/local-tune/models.conf
+/local-tune/config/models.conf
+/local-tune/config/logs/
 /local-tune/odysseus/
 
 # Upstream and Oddly material kept on disk, out of the way (also hidden in .vscode/settings.json)
