@@ -677,4 +677,45 @@ Moved to [HISTORY.md](HISTORY.md) (22 commits from `52b730eb4` on 2026-10-05 19:
 
 - 2026-10-07: created from README, TRIALS, ASSESSMENT, EXPERIMENT-DISCOVERY, BACKEND-PLAN and the directive. Superseded originals moved to `archive/` with headers; scripts moved to `scripts/`, config to `config/`, results grouped by family; paths updated in all scripts (new `scripts/paths.py`).
 - Assumptions: `free` in §6 is 5754 minus recorded peak; the ctx probe's `3/3` means three planted keys recalled; TRIALS' "16 chunks" for the 9B KV perplexity corrected to 8; the directive's `jobs.py` wording left as quoted and flagged; the 7B ceiling 32,768-49,152 is read from the `m2-slope` probe, not certified; ub64/ub32 peaks are read as including a higher desktop base.
+- 2026-10-07: added §16 (coverage matrix).
 - Contradictions adjudicated: GPU bandwidth 288 vs 331 GB/s; ceiling "about 5750" vs 5754; perplexity corpora; directive `jobs.py` vs ctxprobe keys; repo/branch name; `gpu-oc.service` "not set up" vs applied; E1 not applied vs next action 1 done; H2 dropped by proxy vs rejected by S2; "29 layers" on a 28-layer 7B; stale `build-exp` path; `cpu_model` 2788 vs 704 MiB (unreconciled); stale 9B numbers in the shortlist row.
+
+## 16. Experiment coverage matrix
+
+✔ run and recorded, ◐ partly run (noted), ○ not run yet, – does not apply. Largest gaps: the 4B (several levers never tried on it) and directive tracks 2–5.
+
+### Experiment × model
+
+| Experiment | 1.3B | 3B | 4B (qwen3.5) | 7B | 9B | Small 2B-class (gemma4-e2b, MiniCPM) |
+|---|---|---|---|---|---|---|
+| GTX 16xx kernel selection (change 1) | ✔ | ✔ | ○ | ✔ | ✔ (GPU and CPU) | ○ |
+| GDN CPU path (change 2) | ✔ (no effect) | ✔ (no effect) | ○ (qwen35 model) | – | ✔ | – |
+| q8_0 K / q4_0 V pair | ○ | ○ | ◐ (q8/q8 context run only) | ✔ | ◐ (perplexity, no speed gain) | ○ |
+| GPU layer count / placement | – | – | ○ | ✔ | ✔ (E1, S1, S3) | – |
+| ngram-simple speculation | ✔ | ✔ | ○ | ✔ (not applied) | ✔ | ○ |
+| draft-model speculation | – | ✔ | ○ | ◐ (BOS mismatch, no room) | ○ (no matching small model) | – |
+| MTP / DFlash drafters | – | – | ✔ (0.65×) | – | ✔ (DFlash no-go) | ✔ (0.83×) |
+| CUDA Graphs on/off | ✔ | ○ | ○ | ✔ | ✔ | ○ |
+| Fusion off, -ub 1024/2048 | ✔ | ✔ | ◐ (B1 -ub sweep only) | ✔ | ✔ | ○ |
+| Attention kernel changes (E2, E3, S2) | – | – | ○ | ✔ (all rejected) | ○ (head size 256) | – |
+| Q4_K output matrix | – | – | ○ (H6) | – | ✔ (S3) | ○ |
+| Profiling trace (CUPTI) | ○ | ○ | ✔ | ✔ | ✔ (pre-S1 placement) | ○ |
+| Context ceiling | ○ | ○ | ◐ (to 65K, uncertified) | ◐ (OK at 32K, fails at 49K, uncertified) | ✔ (certified) | ○ |
+| GPU overclock | – | – | ○ | ✔ | ○ | ○ |
+| Backend plan B1–B6 | – | – | ✔ | – | – | ✔ |
+
+### Variants inside each experiment
+
+| Experiment | Run | Not run yet |
+|---|---|---|
+| KV type (7B) | f16, q8/q8, q8/q4, q4/q4, K q4 / V q8 | recent-token high-precision window, Turbo4/Turbo3, 2-bit KV |
+| 9B placement | shipped -ngl 25, E1, e1-drop9, e1-drop69, 7 small GDN blocks, A/B/C, a 5-block set | -ngl 27 repeated; a 9B Q8 or Q5 output file |
+| -ub for context | 512, 256, 128, 64, 32 | -ub 16; -ub 64 with a clean desktop-memory baseline |
+| Kernel for context | normal; forced vec at 49,152 only | forced vec at 65,536 to 131,072 |
+| Context length | 8K to 81,920 (9B); 98,304 failed on ub128 and ub64 | 114,688; 131,072; 9B f16 past 24K; 7B certified at 32K |
+| ngram settings | simple default, n/m sweep, map-k, map-k4v, mod | none open |
+| Overclock | memory to +2400, core to +135, 100 W and 120 W, soak 14 of 14 | a multi-day soak with an Xid check; the 9B as the test load |
+| Hardware | 100 W, locked clocks, memory +250, huge pages | EXPO/FCLK, C-states, SMT off, mitigations=off |
+| Directive tracks 2–5 | none | IQ3 FFN, DuoAttention on the 7B, GDN pruning, KV streaming (-nkvo 1) |
+| Quality at long context | 3 planted keys recalled | needle recall, code asserts, tool calls at 49K to 81K |
+| End-to-end suite on placement C | perplexity only | job checks (routing, tools, code) |
