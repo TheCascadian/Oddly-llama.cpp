@@ -1,0 +1,7 @@
+title: B1 batch size: qwen3.5-4b reads a 4096 token prompt, -b 2048, by -ub
+args: -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -t 6 -ngl 99 -fa 1 -ctk q8_0 -ctv q8_0 -b 2048 -p 4096 -n 64 -r 3
+ub 512 (current) | build-live | | -ub 512
+ub 256 | build-live | | -ub 256
+ub 1024 | build-live | | -ub 1024
+ub 2048 | build-live | | -ub 2048
+ub 512 again | build-live | | -ub 512

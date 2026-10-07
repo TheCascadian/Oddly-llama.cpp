@@ -231,6 +231,27 @@ Run with `sudo` in the user's session. R1-distill 7B Q4_K_S, `-ngl 99`, K q8_0 /
 - Offsets live in the driver and reset at reboot or on a crash. `gpu-push.py apply` sets the saved pair again. A boot-time systemd unit for it is not set up.
 - Not done: a longer real-workload soak, and a check of the Xid log over days of use.
 
+## 2e. Backend plan for the added models, 2026-10-06 (fourth session)
+
+Plan and rules: [BACKEND-PLAN.md](BACKEND-PLAN.md). Every candidate ran in the same run as its baseline. Models: qwen3.5-4b, minicpm5-2b, virbiusguard.
+One change was kept, and it is not a backend change; all six backend steps showed no gain and nothing in the source changed.
+
+| Step | Result | Numbers | Files |
+|---|---|---|---|
+| Guard verdict from one token | **kept** | tool-call check 214 and 239 ms down to 101 and 111 ms in the job (which includes one cold read of the system prompt), about 45 ms with the prompt cached; same verdicts on all 34 cases; no probability limit beat 0.5 | `suite-guard1.csv`, `suite-guard1-repeat.csv` |
+| B1 batch size (`-ub` 256 to 2048) | no gain | 4B reads 4096 tokens at 955 to 971 t/s for every value; the two runs of 512 differ by 1.1 percent | `compare-be-b1-batch.csv` |
+| B2 slot count | not applied | MiniCPM long output on all slots: 322 t/s (8), 468 (12), 568 (16), 642 (24), 659 (32), same VRAM. Routing does not follow: 24.4, 25.1, 23.9, 21.1, 18.0 items/s. Guard on GPU: 642 t/s (4), 847 (8) | `suite-be-b2.csv` |
+| B3 build flags (LTO) | no gain | guard on CPU writes 125.5 and 128.7 t/s (live) against 127.5 and 126.9 (LTO); 12 threads are slower than 6 (94 to 98 t/s); 4B on GPU unchanged. AVX-512, VNNI and BF16 are already compiled in | `compare-be-b3-cpu.csv`, `compare-be-b3-gpu.csv` |
+| B4 sampling on the GPU (`-bs`) | no gain | one stream 133.3 to 134.1 (MiniCPM), 310.6 to 307.9 (guard on GPU), 77.5 to 78.2 (4B); all slots 641 to 658 on the guard, under the 3 percent limit. Not verified that the server sampled on the GPU with these sampler settings | `suite-be-b4.csv` |
+| B5 matrix-vector kernel shape | no gain | the card already uses its own table (`MMVQ_PARAMETERS_TURING`, 2 warps for K-quants). 1 warp: 4B 79.7 to 70.8, MiniCPM 144 to 129, guard 350 to 316. 4 warps: 72.7, 136, 311. 8 warps: 57.3, 99, 235. Two is the best value | `compare-be-b5-w1.csv`, `-w4`, `-w8` |
+| B6 output layer limited to the allowed tokens | dropped at the ceiling check | the output layer is 18.5 percent (4B), 15.6 percent (MiniCPM) and 32.7 percent (guard) of the bytes read per written token, but the guard writes one token after reading about 14 and the router two after about 17, so a request gains about 3 and 2 percent | model file headers |
+
+What the numbers say about where the time goes:
+- Effective memory rate while writing: 222 GB/s on the 4B (77 percent of the card's 288), 188 GB/s on MiniCPM, 136 GB/s on the guard. The small models are held back by fixed cost per token, which more slots recover (MiniCPM 134 t/s on one stream, 659 t/s on 32).
+- Routing is limited by the number of batch steps per item, not by the GPU or the gateway (28.8 items/s through the gateway, 29.0 direct). Ending the answer after the label token (`max_tokens` 1 with word labels) gave 48 to 66 items/s against 36 to 50 in three repeats with the same accuracy. One-letter labels were faster (72 items/s) but only 49 of 96 right.
+
+Still open, outside the backend: `max_tokens` 1 in the swarm caller; 16 slots for MiniCPM if more than 8 callers ever send long output; the Odysseus prompt that changes between agent rounds and makes the 4B read 7,000 to 15,400 tokens again each round.
+
 ## 3. Baseline, with one correction
 
 ### Figures that have saved results

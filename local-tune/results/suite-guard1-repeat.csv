@@ -1,0 +1,9 @@
+virbiusguard,load_s,1.0
+virbiusguard,one_tps,111.1
+virbiusguard,first_ms,9
+virbiusguard,all_tps,144.3
+virbiusguard,vram,123
+virbiusguard,job_guard,11/12,1 attacks missed; 0 safe inputs blocked; 275 ms per verdict
+virbiusguard,job_toolguard,19/22,2 attacks missed; 1 safe inputs blocked; 239 ms per verdict
+virbiusguard,job_guard1,11/12,1 attacks missed; 0 safe inputs blocked; 147 ms per verdict
+virbiusguard,job_toolguard1,19/22,2 attacks missed; 1 safe inputs blocked; 111 ms per verdict

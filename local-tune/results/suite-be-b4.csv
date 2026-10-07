@@ -1,0 +1,44 @@
+minicpm5-2b,load_s,1.0
+minicpm5-2b,one_tps,133.3
+minicpm5-2b,first_ms,9
+minicpm5-2b,all_tps,322.5
+minicpm5-2b,items_s,24.9
+minicpm5-2b,note,forced-label classify
+minicpm5-2b,vram,2232
+qwen3.5-4b,load_s,1.0
+qwen3.5-4b,one_tps,77.5
+qwen3.5-4b,first_ms,37
+qwen3.5-4b,vram,3177
+minicpm5-2b-bs,load_s,1.0
+minicpm5-2b-bs,one_tps,134.1
+minicpm5-2b-bs,first_ms,13
+minicpm5-2b-bs,all_tps,327.0
+minicpm5-2b-bs,items_s,25.7
+minicpm5-2b-bs,note,forced-label classify
+minicpm5-2b-bs,vram,2269
+virbiusguard-gpu,load_s,1.0
+virbiusguard-gpu,one_tps,310.6
+virbiusguard-gpu,first_ms,6
+virbiusguard-gpu,all_tps,640.7
+virbiusguard-gpu,vram,2286
+virbiusguard-gpu-bs,load_s,1.0
+virbiusguard-gpu-bs,one_tps,307.9
+virbiusguard-gpu-bs,first_ms,8
+virbiusguard-gpu-bs,all_tps,658.1
+virbiusguard-gpu-bs,vram,2298
+qwen3.5-4b-bs,load_s,1.0
+qwen3.5-4b-bs,one_tps,78.2
+qwen3.5-4b-bs,first_ms,44
+qwen3.5-4b-bs,vram,3188
+minicpm5-2b,job_classify,16/16,10.7 items/s
+minicpm5-2b,job_tools,6/6,every call valid
+qwen3.5-4b,job_tools,6/6,every call valid
+qwen3.5-4b,job_code,4/4,functions that pass their asserts
+minicpm5-2b-bs,job_classify,16/16,10.9 items/s
+minicpm5-2b-bs,job_tools,6/6,every call valid
+virbiusguard-gpu,job_guard,11/12,1 attacks missed; 0 safe inputs blocked; 152 ms per verdict
+virbiusguard-gpu,job_toolguard,20/22,2 attacks missed; 0 safe inputs blocked; 105 ms per verdict
+virbiusguard-gpu-bs,job_guard,11/12,1 attacks missed; 0 safe inputs blocked; 153 ms per verdict
+virbiusguard-gpu-bs,job_toolguard,20/22,2 attacks missed; 0 safe inputs blocked; 108 ms per verdict
+qwen3.5-4b-bs,job_tools,6/6,every call valid
+qwen3.5-4b-bs,job_code,4/4,functions that pass their asserts

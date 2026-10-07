@@ -1,0 +1,8 @@
+title: B3 build flags: guard on CPU, live build against the LTO build
+args: -m /home/wrekt/odysseus-local/models/virbiusguard-v2.0-q4_k_m.gguf -ngl 0 -p 128 -n 16 -r 5
+live, 6 threads (current) | build-live | | -t 6
+LTO, 6 threads | build-lto | | -t 6
+live, 12 threads | build-live | | -t 12
+LTO, 12 threads | build-lto | | -t 12
+LTO, 6 threads again | build-lto | | -t 6
+live, 6 threads again | build-live | | -t 6

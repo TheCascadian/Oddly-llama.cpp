@@ -1,0 +1,3 @@
+title: every gateway model with its own settings
+args: -t 6 -fa 1 -d 0,4096,8192 -p 512 -n 64 -r 3
+virbiusguard | build-live | | -m /home/wrekt/odysseus-local/models/virbiusguard-v2.0-q4_k_m.gguf -ngl 0 -ctk f16 -ctv f16

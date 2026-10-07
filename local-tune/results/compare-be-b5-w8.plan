@@ -1,0 +1,11 @@
+title: B5 matrix-vector kernels: 8 warps for K-quants (build-exp) against 2 warps (build-live)
+args: -t 6 -ngl 99 -fa 1 -p 512 -n 128 -r 3
+4B 2 warps (live) | build-live | | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf
+4B 8 warps | build-exp | | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf
+4B 2 warps again | build-live | | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf
+minicpm 2 warps (live) | build-live | | -m /home/wrekt/odysseus-local/models/MiniCPM5-2B-Q4_K_M.gguf
+minicpm 8 warps | build-exp | | -m /home/wrekt/odysseus-local/models/MiniCPM5-2B-Q4_K_M.gguf
+minicpm 2 warps again | build-live | | -m /home/wrekt/odysseus-local/models/MiniCPM5-2B-Q4_K_M.gguf
+guard 2 warps (live) | build-live | | -m /home/wrekt/odysseus-local/models/virbiusguard-v2.0-q4_k_m.gguf
+guard 8 warps | build-exp | | -m /home/wrekt/odysseus-local/models/virbiusguard-v2.0-q4_k_m.gguf
+guard 2 warps again | build-live | | -m /home/wrekt/odysseus-local/models/virbiusguard-v2.0-q4_k_m.gguf

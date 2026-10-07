@@ -1,0 +1,55 @@
+minicpm5-2b,load_s,1.0
+minicpm5-2b,one_tps,133.7
+minicpm5-2b,first_ms,8
+minicpm5-2b,all_tps,321.6
+minicpm5-2b,items_s,24.4
+minicpm5-2b,note,forced-label classify
+minicpm5-2b,vram,2233
+minicpm5-2b-p12,load_s,1.0
+minicpm5-2b-p12,one_tps,132.1
+minicpm5-2b-p12,first_ms,11
+minicpm5-2b-p12,all_tps,468.2
+minicpm5-2b-p12,items_s,25.1
+minicpm5-2b-p12,note,forced-label classify
+minicpm5-2b-p12,vram,2234
+minicpm5-2b-p16,load_s,1.0
+minicpm5-2b-p16,one_tps,132.4
+minicpm5-2b-p16,first_ms,11
+minicpm5-2b-p16,all_tps,568.4
+minicpm5-2b-p16,items_s,23.9
+minicpm5-2b-p16,note,forced-label classify
+minicpm5-2b-p16,vram,2234
+minicpm5-2b-p24,load_s,1.0
+minicpm5-2b-p24,one_tps,133.2
+minicpm5-2b-p24,first_ms,8
+minicpm5-2b-p24,all_tps,641.5
+minicpm5-2b-p24,items_s,21.1
+minicpm5-2b-p24,note,forced-label classify
+minicpm5-2b-p24,vram,2236
+minicpm5-2b-p32,load_s,1.0
+minicpm5-2b-p32,one_tps,134.3
+minicpm5-2b-p32,first_ms,7
+minicpm5-2b-p32,all_tps,659.0
+minicpm5-2b-p32,items_s,18.0
+minicpm5-2b-p32,note,forced-label classify
+minicpm5-2b-p32,vram,2240
+virbiusguard-gpu-p4,load_s,1.0
+virbiusguard-gpu-p4,one_tps,333.1
+virbiusguard-gpu-p4,first_ms,3
+virbiusguard-gpu-p4,all_tps,641.6
+virbiusguard-gpu-p4,vram,2286
+virbiusguard-gpu-p8,load_s,1.0
+virbiusguard-gpu-p8,one_tps,315.1
+virbiusguard-gpu-p8,first_ms,5
+virbiusguard-gpu-p8,all_tps,847.1
+virbiusguard-gpu-p8,vram,4078
+virbiusguard-gpu-p16,note,FAILED HTTP Error 400: Bad Request
+minicpm5-2b,job_classify,16/16,11.2 items/s
+minicpm5-2b,job_tools,6/6,every call valid
+minicpm5-2b-p12,job_classify,16/16,10.7 items/s
+minicpm5-2b-p16,job_classify,16/16,11.1 items/s
+minicpm5-2b-p24,job_classify,16/16,11.0 items/s
+minicpm5-2b-p32,job_classify,16/16,11.1 items/s
+virbiusguard-gpu-p4,job_toolguard1,20/22,2 attacks missed; 0 safe inputs blocked; 61 ms per verdict
+virbiusguard-gpu-p8,job_toolguard1,20/22,2 attacks missed; 0 safe inputs blocked; 57 ms per verdict
+virbiusguard-gpu-p16,job_toolguard1,FAIL,HTTP Error 503: Service Unavailable
