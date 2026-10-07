@@ -11,7 +11,7 @@
 
 <img src="local-tune/img/speedups.svg" alt="Speed-up of each kept change: 9B code edit 7.0x, 3B code edit 3.2x, 7B at 15K context 1.81x, 7B empty context 1.53x, 7B clocks 1.16x, 9B 1.16x and 1.15x" width="860">
 
-[Assessment](local-tune/ASSESSMENT.md) · [Full report](local-tune/report.html) · [Change log with code](local-tune/README.md) · [Every trial](local-tune/TRIALS.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
+[Assessment](local-tune/archive/ASSESSMENT.md) · [Full report](local-tune/archive/report.html) · [Unified record](local-tune/UNIFIED.md) · [Every trial](local-tune/UNIFIED.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
 
 </div>
 
@@ -32,10 +32,10 @@ The README that came with the code is folded away [at the end of this page](#rea
 
 | # | Change | Effect | Where |
 |---|---|---|---|
-| 1 | CUDA: stop using tensor-core kernels on GTX 16xx (no tensor cores, only emulated) | prompt reading 2.9x to 4.2x faster | [change 1](local-tune/README.md#change-1-gtx-16xx-kernel-selection) |
-| 2 | qwen35: skip the fused raw-gate GDN path on CPU layers (x86) | 9B hybrid and CPU decode 20-35% faster | [change 2](local-tune/README.md#change-2-qwen35-gdn-path-on-cpu-layers) |
-| 3 | CUDA: build the q8_0 K / q4_0 V attention pair by default | 7B fits all layers at 16K, writing 11-16% faster | [change 3](local-tune/README.md#change-3-q8_0-k--q4_0-v-attention-pair) |
-| 4 | Runtime settings: more GPU layers, `ngram-simple` speculative decoding | 9B code edits 7.0x, 3B 3.2x; 7B +37% to +57% | [trials 2](local-tune/TRIALS.md) |
+| 1 | CUDA: stop using tensor-core kernels on GTX 16xx (no tensor cores, only emulated) | prompt reading 2.9x to 4.2x faster | [change 1](local-tune/UNIFIED.md#4-change-ledger) |
+| 2 | qwen35: skip the fused raw-gate GDN path on CPU layers (x86) | 9B hybrid and CPU decode 20-35% faster | [change 2](local-tune/UNIFIED.md#4-change-ledger) |
+| 3 | CUDA: build the q8_0 K / q4_0 V attention pair by default | 7B fits all layers at 16K, writing 11-16% faster | [change 3](local-tune/UNIFIED.md#4-change-ledger_0-k--q4_0-v-attention-pair) |
+| 4 | Runtime settings: more GPU layers, `ngram-simple` speculative decoding | 9B code edits 7.0x, 3B 3.2x; 7B +37% to +57% | [trials 2](local-tune/UNIFIED.md) |
 | 5 | GPU overclock (memory +2300, core +105, 120 W), found by an automated stability sweep | 7B decode 43.8 to 50.7 t/s | [overclock](#overclock-found-by-script-checked-by-perplexity) |
 
 <details>
@@ -72,13 +72,13 @@ The README that came with the code is folded away [at the end of this page](#rea
 | H6 | evening | Matrix-vector kernel shape (1, 4, 8 warps) | No gain | 2 warps, the current value, is fastest on all three models |
 | H7 | evening | Output layer limited to the allowed tokens | No-go | dropped before any code: about 2-3% of a guard or routing request |
 
-Verdicts: **Applied** is in the gateway settings or the build. **Saved** is a stored overclock state. **No gain** and **No-go** were measured and dropped. **Not applied** worked but was left out with a reason, see [TRIALS.md](local-tune/TRIALS.md).
+Verdicts: **Applied** is in the gateway settings or the build. **Saved** is a stored overclock state. **No gain** and **No-go** were measured and dropped. **Not applied** worked but was left out with a reason, see [TRIALS.md](local-tune/UNIFIED.md).
 
 </details>
 
 ## Models and job checks
 
-Eight models are served through one gateway ([`gateway.py`](local-tune/gateway.py), one `models.conf` line each). [`suite.py`](local-tune/suite.py) measures each one three ways: raw speed, speed through the gateway, and small fixed job checks from [`jobs.py`](local-tune/jobs.py). The [assessment](local-tune/ASSESSMENT.md) is generated from those result files.
+Eight models are served through one gateway ([`gateway.py`](local-tune/scripts/gateway.py), one `models.conf` line each). [`suite.py`](local-tune/scripts/suite.py) measures each one three ways: raw speed, speed through the gateway, and small fixed job checks from [`jobs.py`](local-tune/scripts/jobs.py). The [assessment](local-tune/archive/ASSESSMENT.md) is generated from those result files.
 
 <img src="local-tune/img/models.svg" alt="Writing speed of kept, added, rejected and dropped models" width="860">
 
@@ -100,14 +100,14 @@ Embedding (embeddinggemma-300m, 454 items/s) and reranking (qwen3-reranker-0.6b,
 
 - **One-token verdict.** The guard prompt ends with `{"hit_rule":` and the request asks for one token with its probabilities. The probability of `true` against a limit of 0.5 is the verdict. A check takes about 45 ms with the prompt cached (214 to 239 ms before), with the same verdict on all 34 test cases. The guard runs on the CPU, so it never pushes the agent model out of VRAM.
 - **Known misses.** Two attack tool calls score under 0.001 and pass, and one safe call scores 0.54 and is flagged. No limit beats 0.5 on the test set (30 of 34).
-- **Backend plan.** Six backend changes for the added models were planned with a goal, a baseline rerun and a pass rule each ([BACKEND-PLAN.md](local-tune/BACKEND-PLAN.md)). None was kept: rows H2 to H7 above, details in [TRIALS.md, section 2e](local-tune/TRIALS.md).
+- **Backend plan.** Six backend changes for the added models were planned with a goal, a baseline rerun and a pass rule each ([BACKEND-PLAN.md](local-tune/UNIFIED.md)). None was kept: rows H2 to H7 above, details in [TRIALS.md, section 2e](local-tune/UNIFIED.md).
 - **Where the time goes.** The 4B writes at 77% of the card's memory rate (222 of 288 GB/s), so little is left in the kernels. The small models are limited by fixed cost per token, which more slots recover.
 
 </details>
 
 ## Overclock, found by script, checked by perplexity
 
-Raising GPU clocks can corrupt output silently, so a speed number alone proves nothing. [`gpu-push.py`](local-tune/gpu-push.py) raises one offset at a time and judges every step on five checks, then runs a soak test before it saves anything.
+Raising GPU clocks can corrupt output silently, so a speed number alone proves nothing. [`gpu-push.py`](local-tune/scripts/gpu-push.py) raises one offset at a time and judges every step on five checks, then runs a soak test before it saves anything.
 
 ```mermaid
 flowchart LR
@@ -157,10 +157,10 @@ Offsets live in the driver only: a reboot or a crash returns them to 0, and a ha
 <br>
 
 ```sh
-python3 local-tune/gpu-push.py --mem-max 1500 --core-max 300 --power 120   # first run
-python3 local-tune/gpu-push.py --resume --power 120 --mem-max 2400         # later, upward only
-python3 local-tune/gpu-push.py apply                                       # after each reboot
-python3 local-tune/gpu-push.py reset                                       # back to stock
+python3 local-tune/scripts/gpu-push.py --mem-max 1500 --core-max 300 --power 120   # first run
+python3 local-tune/scripts/gpu-push.py --resume --power 120 --mem-max 2400         # later, upward only
+python3 local-tune/scripts/gpu-push.py apply                                       # after each reboot
+python3 local-tune/scripts/gpu-push.py reset                                       # back to stock
 ```
 
 It needs the proprietary NVIDIA driver, `sudo`, a GGUF that fits in VRAM and a fixed text file for the perplexity check. [`local-tune/oc-kit/AGENT.md`](local-tune/oc-kit/AGENT.md) lists every hardcoded value to change for another machine, written so an AI agent can make the edits. It can hang the machine, so save your work first.
@@ -182,18 +182,18 @@ It needs the proprietary NVIDIA driver, `sudo`, a GGUF that fits in VRAM and a f
 
 <br>
 
-- `python3 local-tune/lab.py auto` reruns the checks that cover a source file when it changes and rewrites the results page.
-- `local-tune/bench.sh <build-dir> <label>` runs the four standard models; `compare.py`, `ppl.py` and `spectest.py` run A/B, perplexity and server-side trials. See [local-tune/README.md](local-tune/README.md#reproduce).
-- `python3 local-tune/suite.py run <name>` tests every model in `models.conf` (speed, served speed, job checks); `python3 local-tune/assess.py <new> <base>` writes the [assessment](local-tune/ASSESSMENT.md) and its picture.
-- `python3 local-tune/watch.py` is the live terminal view of whatever run is newest.
-- The interactive [report](local-tune/report.html) has the same data with expandable changes and hover charts. Open it locally in a browser, or through an HTML previewer such as `https://htmlpreview.github.io/?https://github.com/TheCascadian/Wrekt-llama.cpp/blob/master/local-tune/report.html`.
+- `python3 local-tune/scripts/lab.py auto` reruns the checks that cover a source file when it changes and rewrites the results page.
+- `local-tune/scripts/bench.sh <build-dir> <label>` runs the four standard models; `compare.py`, `ppl.py` and `spectest.py` run A/B, perplexity and server-side trials. See [local-tune/UNIFIED.md](local-tune/UNIFIED.md#4-change-ledger).
+- `python3 local-tune/scripts/suite.py run <name>` tests every model in `models.conf` (speed, served speed, job checks); `python3 local-tune/scripts/assess.py <new> <base>` writes the [assessment](local-tune/archive/ASSESSMENT.md) and its picture.
+- `python3 local-tune/scripts/watch.py` is the live terminal view of whatever run is newest.
+- The interactive [report](local-tune/archive/report.html) has the same data with expandable changes and hover charts. Open it locally in a browser, or through an HTML previewer such as `https://htmlpreview.github.io/?https://github.com/TheCascadian/Wrekt-llama.cpp/blob/master/local-tune/archive/report.html`.
 
 </details>
 
 ## Build
 
 ```sh
-local-tune/build.sh        # Release, CUDA for sm_75, native CPU flags
+local-tune/scripts/build.sh        # Release, CUDA for sm_75, native CPU flags
 ```
 
 Other platforms and backends build as in llama.cpp: [docs/build.md](docs/build.md). The license is MIT, as upstream ([LICENSE](LICENSE), [AUTHORS](AUTHORS)).
