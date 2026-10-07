@@ -6,7 +6,7 @@
 <title>Six GB Record</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-html{-webkit-text-size-adjust:100%}body{margin:0}
+html{-webkit-text-size-adjust:100%;overflow-anchor:none}body{margin:0}
 /* Layout: sticky tabs over five rooms. Overview leads with the speed-ups; the memory budget, the ledger, the experiments and the commands open on demand. Hand-built; the full text lives in UNIFIED.md. */
 :root{
   --bg:#eef1f3;--panel:#fbfcfc;--fg:#15202a;--mute:#566673;--line:#d3dade;--track:#e2e7ea;
@@ -122,7 +122,7 @@ pre{margin:0;overflow-x:auto;font:12px/1.6 var(--mono);padding:14px 18px;backgro
   <div class="panel pad"><h2>Where the time goes</h2>
     <p class="hint" style="margin:6px 0 12px">ms per decoded token. Pick a model and depth.</p>
     <div class="seg" id="tokpick"></div>
-    <div class="mem" id="tok" style="margin-top:14px"></div>
+    <div class="mem" id="tok" style="margin-top:14px;min-height:196px;align-content:start"></div>
     <div class="legend" style="margin-top:12px"><span style="--c:var(--cfg)">weights</span><span style="--c:var(--hw)">attention</span><span style="--c:var(--spec)">other</span><span style="--c:var(--base)">GPU idle</span></div>
     <p class="foot" style="margin-top:12px">7B and 4B weights run at 83–89% of the 331 GB/s memory bandwidth, so only fewer bytes help. 7B attention growth is compute-bound. The 9B waits on the layers that live on the CPU.</p>
   </div>
@@ -132,7 +132,7 @@ pre{margin:0;overflow-x:auto;font:12px/1.6 var(--mono);padding:14px 18px;backgro
   <div class="panel pad"><h2>How far can the 9B read?</h2>
     <p class="hint" style="margin:6px 0 12px">Memory at each context length, against the 5754 MiB line. Pick a configuration.</p>
     <div class="seg" id="cfgpick"></div>
-    <div class="mem" id="ctxmem" style="margin-top:14px"></div>
+    <div class="mem" id="ctxmem" style="margin-top:14px;min-height:260px;align-content:start"></div>
     <div class="legend" style="margin-top:12px"><span style="--c:var(--cfg)">model 3858</span><span style="--c:var(--hw)">KV cache</span><span style="--c:var(--spec)">compute buffer</span><span style="--c:var(--base)">desktop and other</span></div>
   </div>
   <div class="panel">
@@ -235,7 +235,7 @@ const ROOMS=[["overview","Overview"],["context","Context"],["changes","Changes"]
 const tabs=$("#tabs");const ink=el("span","ink");tabs.appendChild(ink);
 ROOMS.forEach(([id,n],i)=>{const b=el("button","tab",n);b.setAttribute("role","tab");b.dataset.id=id;b.onclick=()=>show(id,true);tabs.insertBefore(b,ink)});
 function moveInk(){const t=$('.tab[aria-selected="true"]');if(t){ink.style.width=t.offsetWidth+'px';ink.style.transform=`translateX(${t.offsetLeft}px)`}}
-function show(id,top){$$(".room").forEach(r=>r.hidden=r.id!=="r-"+id);$$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.id===id));moveInk();try{history.replaceState(null,"","#"+id)}catch(e){}if(top)scrollTo(0,0)}
+function show(id,top){$$(".room").forEach(r=>r.hidden=r.id!=="r-"+id);$$(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.id===id));moveInk();if(top)scrollTo(0,0)}
 /* ---- overview ---- */
 STATS.forEach(([k,n,s])=>$("#stats").appendChild(el("div","",`<span class=k>${k}</span><span class=n>${n}</span><span class=s>${s}</span>`)));
 const max=Math.max(...SPEED.map(r=>r[2]/r[1]));
@@ -273,7 +273,7 @@ REJ.forEach(([t,n])=>$("#rej").appendChild(el("div","vrow",`<div class=vbtn styl
 DIRS.forEach(([a,b])=>$("#dirs").appendChild(el("div","vrow",`<div class=vbtn style="cursor:default"><div class=vtop><span class=mono>${a}</span><span class=nums>${b}</span></div></div>`)));
 TODO.forEach(([a,b])=>$("#todo").appendChild(el("div","vrow",`<div class=vbtn style="cursor:default"><div class=vtop><b>${a}</b><span class=nums>${b}</span></div></div>`)));
 addEventListener("resize",moveInk);
-show((location.hash||"#overview").slice(1).replace(/[^a-z]/g,"")||"overview");
+show("overview");
 document.fonts&&document.fonts.ready.then(moveInk);
 </script>
 </body></html>
