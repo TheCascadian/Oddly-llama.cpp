@@ -31,11 +31,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 a{color:var(--cfg)}
 :focus-visible{outline:2px solid var(--cfg);outline-offset:2px}
 .tabs{position:sticky;top:0;z-index:5;background:var(--bg);margin-inline:-16px;padding-inline:16px;border-bottom:1px solid var(--line)}
-.tabs-in{position:relative;max-width:940px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs-in{position:relative;max-width:940px;margin:0 auto;display:flex;flex-wrap:wrap;gap:0 4px}
 .tabs-in::-webkit-scrollbar{display:none}
-.tab{background:none;border:0;padding:12px 14px;font:500 13px var(--mono);color:var(--mute);white-space:nowrap}
-.tab:hover,.tab[aria-selected="true"]{color:var(--fg)}
-.ink{position:absolute;bottom:0;height:2px;background:var(--cfg);left:0;width:0;transition:transform .3s cubic-bezier(.3,.7,.2,1),width .3s}
+.tab{background:none;border:0;padding:10px 12px;font:500 13px var(--mono);color:var(--mute);white-space:nowrap}
+.tab:hover{color:var(--fg)}.tab[aria-selected="true"]{color:var(--fg);box-shadow:inset 0 -2px 0 var(--cfg)}
+.ink{display:none;position:absolute;bottom:0;height:2px;background:var(--cfg);left:0;width:0;transition:transform .3s cubic-bezier(.3,.7,.2,1),width .3s}
 .room[hidden]{display:none}
 .room{display:flex;flex-direction:column;gap:22px;animation:rise .35s ease both}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -95,11 +95,19 @@ a{color:var(--cfg)}
 .stack i{position:absolute;top:0;bottom:0}
 .limit{position:absolute;top:-5px;bottom:-5px;border-left:2px solid var(--bad)}
 .fail{color:var(--bad)}
-.tbl{overflow-x:auto}
-table{border-collapse:collapse;font:12px var(--mono);min-width:100%}
-th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;white-space:nowrap}
+.tbl{overflow:visible}
+table{border-collapse:collapse;font:12px var(--mono);width:100%;table-layout:auto}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:normal;overflow-wrap:anywhere;vertical-align:top}
+@media(max-width:700px){
+ table,tbody,tr,td{display:block;width:100%}
+ tr:first-child{display:none}
+ tr{padding:10px 0;border-bottom:1px solid var(--line)}
+ td{border:0;padding:3px 0;display:grid;grid-template-columns:96px 1fr;gap:8px}
+ td::before{content:attr(data-l);color:var(--mute)}
+ td:first-child{display:block;font-size:13px}td:first-child::before{content:none}
+}
 th{color:var(--mute);font-weight:500}
-pre{margin:0;overflow-x:auto;font:12px/1.6 var(--mono);padding:14px 18px;background:var(--track);border-radius:4px}
+pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 var(--mono);padding:14px 18px;background:var(--track);border-radius:4px}
 .warn{background:var(--warnbg);border-left:3px solid var(--warn);padding:10px 14px;border-radius:3px;font-size:13px}
 .foot{color:var(--mute);font-size:13px}
 </style>
@@ -282,6 +290,7 @@ const mc=c=>{const k=c[0]==='✔'?'v-win':c[0]==='◐'?'v-open':c[0]==='○'?'v-
 const MH=["Experiment", "1.3B", "3B", "4B (qwen3.5)", "7B", "9B", "Small 2B-class (gemma4-e2b, MiniCPM)"],MX=[["GTX 16xx kernel selection (change 1)", "✔", "✔", "○", "✔", "✔ (GPU and CPU)", "○"], ["GDN CPU path (change 2)", "✔ (no effect)", "✔ (no effect)", "○ (qwen35 model)", "–", "✔", "–"], ["q8_0 K / q4_0 V pair", "○", "○", "◐ (q8/q8 context run only)", "✔", "◐ (perplexity, no speed gain)", "○"], ["GPU layer count / placement", "–", "–", "○", "✔", "✔ (E1, S1, S3)", "–"], ["ngram-simple speculation", "✔", "✔", "○", "✔ (not applied)", "✔", "○"], ["draft-model speculation", "–", "✔", "○", "◐ (BOS mismatch, no room)", "○ (no matching small model)", "–"], ["MTP / DFlash drafters", "–", "–", "✔ (0.65×)", "–", "✔ (DFlash no-go)", "✔ (0.83×)"], ["CUDA Graphs on/off", "✔", "○", "○", "✔", "✔", "○"], ["Fusion off, -ub 1024/2048", "✔", "✔", "◐ (B1 -ub sweep only)", "✔", "✔", "○"], ["Attention kernel changes (E2, E3, S2)", "–", "–", "○", "✔ (all rejected)", "○ (head size 256)", "–"], ["Q4_K output matrix", "–", "–", "○ (H6)", "–", "✔ (S3)", "○"], ["Profiling trace (CUPTI)", "○", "○", "✔", "✔", "✔ (pre-S1 placement)", "○"], ["Context ceiling", "○", "○", "◐ (to 65K, uncertified)", "◐ (OK at 32K, fails at 49K, uncertified)", "✔ (certified)", "○"], ["GPU overclock", "–", "–", "○", "✔", "○", "○"], ["Backend plan B1–B6", "–", "–", "✔", "–", "–", "✔"]],VX=[["KV type (7B)", "f16, q8/q8, q8/q4, q4/q4, K q4 / V q8", "recent-token high-precision window, Turbo4/Turbo3, 2-bit KV"], ["9B placement", "shipped -ngl 25, E1, e1-drop9, e1-drop69, 7 small GDN blocks, A/B/C, a 5-block set", "-ngl 27 repeated; a 9B Q8 or Q5 output file"], ["-ub for context", "512, 256, 128, 64, 32", "-ub 16; -ub 64 with a clean desktop-memory baseline"], ["Kernel for context", "normal; forced vec at 49,152 only", "forced vec at 65,536 to 131,072"], ["Context length", "8K to 81,920 (9B); 98,304 failed on ub128 and ub64", "114,688; 131,072; 9B f16 past 24K; 7B certified at 32K"], ["ngram settings", "simple default, n/m sweep, map-k, map-k4v, mod", "none open"], ["Overclock", "memory to +2400, core to +135, 100 W and 120 W, soak 14 of 14", "a multi-day soak with an Xid check; the 9B as the test load"], ["Hardware", "100 W, locked clocks, memory +250, huge pages", "EXPO/FCLK, C-states, SMT off, mitigations=off"], ["Directive tracks 2–5", "none", "IQ3 FFN, DuoAttention on the 7B, GDN pruning, KV streaming (-nkvo 1)"], ["Quality at long context", "3 planted keys recalled", "needle recall, code asserts, tool calls at 49K to 81K"], ["End-to-end suite on placement C", "perplexity only", "job checks (routing, tools, code)"]];
 $('#mx').innerHTML='<tr>'+MH.map(x=>`<th>${x}</th>`).join('')+'</tr>'+MX.map(r=>'<tr><td><b>'+r[0]+'</b></td>'+r.slice(1).map(c=>`<td>${mc(c)}</td>`).join('')+'</tr>').join('');
 $('#vx').innerHTML='<tr><th>Experiment</th><th>Run</th><th>Not run yet</th></tr>'+VX.map(r=>`<tr><td><b>${r[0]}</b></td><td style="white-space:normal">${r[1]}</td><td style="white-space:normal">${r[2]}</td></tr>`).join('');
+$$("table").forEach(t=>{const h=[...t.rows[0].cells].map(c=>c.textContent);[...t.rows].slice(1).forEach(r=>[...r.cells].forEach((c,i)=>c.dataset.l=h[i]))});
 addEventListener("resize",moveInk);
 show("overview");
 document.fonts&&document.fonts.ready.then(moveInk);
