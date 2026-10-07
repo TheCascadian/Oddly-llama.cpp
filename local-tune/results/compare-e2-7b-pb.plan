@@ -1,0 +1,9 @@
+title: E2: 7B at 12K, attention blocks along the KV axis (occupancy test), build-exp
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -t 6 -fa 1 -p 0 -n 32 -r 2 -d 12288
+default-5 | build-exp | |
+pb1 | build-exp | GGML_CUDA_FATTN_PB=1 |
+pb2 | build-exp | GGML_CUDA_FATTN_PB=2 |
+pb10 | build-exp | GGML_CUDA_FATTN_PB=10 |
+pb20 | build-exp | GGML_CUDA_FATTN_PB=20 |
+pb40 | build-exp | GGML_CUDA_FATTN_PB=40 |
+default-5-again | build-exp | |

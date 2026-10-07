@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Live dashboard for the local-tune runners. Read-only; run: local-tune/watch.py
-Without a label it follows the newest run: kvmatrix.sh, compare.py, suite.py, spectest.py or ppl.py.
+Without a label it follows the newest run: kvmatrix.sh, compare.py, suite.py, spectest.py, ppl.py or ctxprobe.py.
 With results/sequence.txt (lines: "bench|kv <label> <title>") it also shows every stage of a queued run.
 local-tune/watch.py <label> shows a saved run: a compare plan, a spectest label or the KV table of a finished stage."""
 import csv, os, re, sys, time
@@ -286,9 +286,9 @@ def newest():
     best = ("kv", None, max(mtime("kvmatrix.log"), mtime("kvmatrix.csv")))
     for f in os.listdir(R):
         # spec logs are named per variant, so only the csv gives the label
-        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$|ppl-(.+?)\.(?:log|csv)$|(?!kvmatrix|compare-|spec-|ppl-|suite-)(.+?)\.log$", f)
+        m = re.match(r"compare-(.+?)\.(?:log|csv)$|spec-(.+?)\.csv$|ppl-(.+?)\.(?:log|csv)$|ctx-(.+?)\.(?:log|csv)$|(?!kvmatrix|compare-|spec-|ppl-|ctx-|suite-)(.+?)\.log$", f)
         if m and mtime(f) > best[2]:
-            best = ("compare" if m[1] else "spec" if m[2] else "ppl" if m[3] else "bench", m[1] or m[2] or m[3] or m[4], mtime(f))
+            best = ("compare" if m[1] else "spec" if m[2] else "ppl" if m[3] else "ctx" if m[4] else "bench", m[1] or m[2] or m[3] or m[4] or m[5], mtime(f))
     if best[0] == "compare" and mtime(f"suite-{best[1]}.log"):   # suite.py runs its first phase through compare.py
         return "suite", best[1]
     return best[:2]
@@ -359,8 +359,8 @@ def other_view(kind, name):
     if kind == "bench":
         log = read(name + ".log")
         return ("\n".join(render_bench([("bench", name, name, 0, "done")]) or ["  " + l for l in log[-12:]]) + "\n\n" + "\n".join(gpu_panel()), 0)
-    import compare, ppl, spectest, suite
-    return {"compare": compare, "spec": spectest, "ppl": ppl, "suite": suite}[kind].render(name)
+    import compare, ctxprobe, ppl, spectest, suite
+    return {"compare": compare, "spec": spectest, "ppl": ppl, "suite": suite, "ctx": ctxprobe}[kind].render(name)
 
 
 if __name__ == "__main__":
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     clear = "" if once else "\033[H\033[J"
     try:
         while True:
-            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("suite", f"suite-{saved[0]}.log"), ("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv"), ("ppl", f"ppl-{saved[0]}.plan")) if mtime(f)), ("kv", None))
+            kind, name = newest() if not saved else next(((k, saved[0]) for k, f in (("suite", f"suite-{saved[0]}.log"), ("compare", f"compare-{saved[0]}.plan"), ("spec", f"spec-{saved[0]}.csv"), ("ppl", f"ppl-{saved[0]}.plan"), ("ctx", f"ctx-{saved[0]}.plan")) if mtime(f)), ("kv", None))
             if kind != "kv":
                 # stays open after a run ends, so it moves on to the next run when one starts
                 sys.stdout.write(clear + other_view(kind, name)[0] + "\n"); sys.stdout.flush()

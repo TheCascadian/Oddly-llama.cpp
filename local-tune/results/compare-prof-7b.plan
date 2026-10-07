@@ -1,0 +1,12 @@
+title: Profile: 7B decode by context depth, CUPTI trace then untraced
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -t 6 -fa 1 -p 0 -n 32 -r 2
+d0 | build-live | CUDA_INJECTION64_PATH=/home/wrekt/src/Oddly-llama.cpp/local-tune/prof/libcupti_trace.so CUPTI_TRACE_OUT=/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/7b-d0.tsv | -d 0
+d4096 | build-live | CUDA_INJECTION64_PATH=/home/wrekt/src/Oddly-llama.cpp/local-tune/prof/libcupti_trace.so CUPTI_TRACE_OUT=/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/7b-d4096.tsv | -d 4096
+d8192 | build-live | CUDA_INJECTION64_PATH=/home/wrekt/src/Oddly-llama.cpp/local-tune/prof/libcupti_trace.so CUPTI_TRACE_OUT=/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/7b-d8192.tsv | -d 8192
+d12288 | build-live | CUDA_INJECTION64_PATH=/home/wrekt/src/Oddly-llama.cpp/local-tune/prof/libcupti_trace.so CUPTI_TRACE_OUT=/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/7b-d12288.tsv | -d 12288
+d15360 | build-live | CUDA_INJECTION64_PATH=/home/wrekt/src/Oddly-llama.cpp/local-tune/prof/libcupti_trace.so CUPTI_TRACE_OUT=/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/7b-d15360.tsv | -d 15360
+d0-plain | build-live | | -d 0
+d4096-plain | build-live | | -d 4096
+d8192-plain | build-live | | -d 8192
+d12288-plain | build-live | | -d 12288
+d15360-plain | build-live | | -d 15360

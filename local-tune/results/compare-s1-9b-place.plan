@@ -1,0 +1,14 @@
+title: S1 bench: 9B placement, shipped -ngl 25 against E1 and CPU sets with fewer bytes (CPU MiB in the label)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ctk q8_0 -ctv q8_0 -t 6 -fa 1 -p 0 -n 32 -r 3 -d 0,8192,12288,15360
+base ngl25 cpu1024 | build-live | | -ngl 25
+e1 cpu1041 | build-live | | -ngl 30 -ot blk\.[45689]\.=CPU
+min8 cpu938 | build-live | | -ngl 99 -ot blk\.[458]\.=CPU,blk\.1[03467]\.=CPU
+e1-drop9 cpu903 | build-live | | -ngl 30 -ot blk\.[4568]\.=CPU
+min7 cpu821 | build-live | | -ngl 99 -ot blk\.[458]\.=CPU,blk\.1[0346]\.=CPU
+e1-drop69 cpu765 | build-live | | -ngl 30 -ot blk\.[458]\.=CPU
+base ngl25 cpu1024-2 | build-live | | -ngl 25
+e1 cpu1041-2 | build-live | | -ngl 30 -ot blk\.[45689]\.=CPU
+min8 cpu938-2 | build-live | | -ngl 99 -ot blk\.[458]\.=CPU,blk\.1[03467]\.=CPU
+e1-drop9 cpu903-2 | build-live | | -ngl 30 -ot blk\.[4568]\.=CPU
+min7 cpu821-2 | build-live | | -ngl 99 -ot blk\.[458]\.=CPU,blk\.1[0346]\.=CPU
+e1-drop69 cpu765-2 | build-live | | -ngl 30 -ot blk\.[458]\.=CPU

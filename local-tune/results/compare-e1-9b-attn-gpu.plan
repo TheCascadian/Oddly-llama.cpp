@@ -1,0 +1,7 @@
+title: E1: 9B, same CPU byte budget, both CPU attention layers moved to the GPU (layers 3 and 7), GDN layers 4-6 and 8-9 to the CPU
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ctk q8_0 -ctv q8_0 -t 6 -fa 1 -p 0 -n 32 -r 3 -d 0,8192,15360
+base | build-live | | -ngl 25
+attn-gpu | build-live | | -ngl 30 -ot blk\.[45689]\.=CPU
+base-2 | build-live | | -ngl 25
+attn-gpu-2 | build-live | | -ngl 30 -ot blk\.[45689]\.=CPU
+attn-gpu-traced | build-live | CUDA_INJECTION64_PATH=/home/wrekt/src/Oddly-llama.cpp/local-tune/prof/libcupti_trace.so CUPTI_TRACE_OUT=/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/e1-9b-attn-gpu.tsv | -ngl 30 -ot blk\.[45689]\.=CPU

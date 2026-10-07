@@ -1,0 +1,13 @@
+NVIDIA GeForce GTX 1660 Ti, 615.71.09, 1033 MiB, 36, 120.00 W
+2319203, /usr/bin/kwin_wayland, 181 MiB
+2319335, /usr/bin/plasmashell, 140 MiB
+83684, /home/wrekt/src/Oddly-llama.cpp/build-live/bin/llama-server, 128 MiB
+
+# state at the end of the profile session, 2026-10-06T18:21:54-07:00
+NVIDIA GeForce GTX 1660 Ti, 615.71.09, 817 MiB, 6144 MiB, 120.00 W, 46
+overclock: memory +2300, core +105 (read back through NVML), power limit 120 W, persistence mode on
+RmProfilingAdminOnly: 1 (no CUPTI hardware counters without root); no nsys, ncu or perf installed
+cpu:  AMD Ryzen 5 7600X 6-Core Processor, governor performance
+kernel: 6.18.52-1-cachyos-lts
+llama.cpp tree: d954ac6f4, build-live llama-bench build bafd6a875
+also running: gateway and the guard llama-server (128 MiB GPU context), left untouched

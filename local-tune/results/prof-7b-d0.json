@@ -1,0 +1,275 @@
+{
+ "trace": "/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/7b-d0.tsv",
+ "tokens": 60,
+ "logits_bytes": 606660,
+ "wall_ms": 16.787118633333332,
+ "gpu_busy_ms": 16.409994216666668,
+ "kernels_per_token": 678.0,
+ "sync_per_token": 18.0,
+ "sync_ms": 16.230852216666666,
+ "gap_us_median": 0.225,
+ "gap_ms_total": 0.20253938333333332,
+ "kernels": [
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, true, true, false, false>",
+   "calls": 28.0,
+   "ms": 7.1700881333333335,
+   "us_per_call": 256.0745761904762,
+   "grid": [
+    "18944,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 256,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, true, false, false, false>",
+   "calls": 132.0,
+   "ms": 5.552943683333334,
+   "us_per_call": 42.067755176767676,
+   "grid": [
+    "3584,1,1",
+    "512,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)14, 1, false, false, false, false>",
+   "calls": 1.0,
+   "ms": 1.6135172666666666,
+   "us_per_call": 1613.5172666666665,
+   "grid": [
+    "151665,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "flash_attn_ext_vec<128, 1, (ggml_type)8, (ggml_type)2, false>",
+   "calls": 28.0,
+   "ms": 0.5442293833333333,
+   "us_per_call": 19.43676369047619,
+   "grid": [
+    "1,2,28"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 2304,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)13, 1, true, false, false, false>",
+   "calls": 7.0,
+   "ms": 0.5105909666666667,
+   "us_per_call": 72.94156666666666,
+   "grid": [
+    "3584,1,1",
+    "512,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "quantize_q8_1",
+   "calls": 169.0,
+   "ms": 0.30416795,
+   "us_per_call": 1.7998103550295856,
+   "grid": [
+    "14,1,1",
+    "74,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "rms_norm_f32<1024, true, false>",
+   "calls": 57.0,
+   "ms": 0.23547546666666666,
+   "us_per_call": 4.131148538011695,
+   "grid": [
+    "1,1,1"
+   ],
+   "block": [
+    "1024,1,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "rope_neox<true, false, float, float>",
+   "calls": 56.0,
+   "ms": 0.09666280000000001,
+   "us_per_call": 1.7261214285714286,
+   "grid": [
+    "28,1,1",
+    "4,1,1"
+   ],
+   "block": [
+    "1,256,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "fwht_cuda<64, float, false>",
+   "calls": 56.0,
+   "ms": 0.08602476666666667,
+   "us_per_call": 1.5361565476190475,
+   "grid": [
+    "14,1,1",
+    "2,1,1"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "fwht_cuda<128, float, false>",
+   "calls": 56.0,
+   "ms": 0.0809158,
+   "us_per_call": 1.444925,
+   "grid": [
+    "1,1,1",
+    "7,1,1"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "k_set_rows_quant<long, block_q4_0, 32, &quantize_f32_q4_0_block>",
+   "calls": 28.0,
+   "ms": 0.06670176666666666,
+   "us_per_call": 2.3822059523809527,
+   "grid": [
+    "1,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "k_set_rows_quant<long, block_q8_0, 32, &quantize_f32_q8_0_block>",
+   "calls": 28.0,
+   "ms": 0.06162003333333333,
+   "us_per_call": 2.200715476190476,
+   "grid": [
+    "1,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "flash_attn_combine_results<128>(float const*, float2 const*, float*, int)",
+   "calls": 28.0,
+   "ms": 0.05023376666666667,
+   "us_per_call": 1.7940630952380952,
+   "grid": [
+    "1,28,1"
+   ],
+   "block": [
+    "128,1,1"
+   ],
+   "shmem": 16,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, false, false, false, false>",
+   "calls": 1.0,
+   "ms": 0.031076216666666667,
+   "us_per_call": 31.076216666666667,
+   "grid": [
+    "3584,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "k_get_rows_float<float, float>",
+   "calls": 2.0,
+   "ms": 0.0039461999999999995,
+   "us_per_call": 1.9730999999999999,
+   "grid": [
+    "1,14,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "k_bin_bcast<&op_add, float, float, float, float const*>",
+   "calls": 1.0,
+   "ms": 0.0018000166666666667,
+   "us_per_call": 1.8000166666666666,
+   "grid": [
+    "14,1,1"
+   ],
+   "block": [
+    "128,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  }
+ ],
+ "memcpy": {
+  "host_to_device": {
+   "calls": 8.0,
+   "bytes": 96792.0,
+   "ms": 0.0101355
+  },
+  "device_to_host": {
+   "calls": 1.0,
+   "bytes": 606660.0,
+   "ms": 0.046960833333333334
+  }
+ },
+ "api": {
+  "cudaStreamSynchronize": {
+   "calls": 18.0,
+   "ms": 16.234420866666667
+  },
+  "cudaGraphLaunch": {
+   "calls": 1.0,
+   "ms": 0.48154386666666665
+  },
+  "cudaMemcpyAsync": {
+   "calls": 9.0,
+   "ms": 0.022171066666666666
+  },
+  "cudaGetDevice": {
+   "calls": 9.0,
+   "ms": 0.0015206666666666667
+  }
+ },
+ "mem_events": {}
+}

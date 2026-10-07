@@ -1,0 +1,5 @@
+title: S1 correctness: 9B perplexity, shipped placement against E1 and E1 without block 9 on the CPU (4 chunks)
+args: -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -f local-tune/results/ppl-corpus.txt -c 4096 -b 512 --chunks 4 -t 6 -fa on -ctk q8_0 -ctv q8_0
+base ngl25 | build-live | -ngl 25
+e1 | build-live | -ngl 30 -ot blk\.[45689]\.=CPU
+e1-drop9 | build-live | -ngl 30 -ot blk\.[4568]\.=CPU

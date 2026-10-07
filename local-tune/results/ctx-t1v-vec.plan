@@ -1,0 +1,4 @@
+title: 9B C q4/q4 ceiling with the vec kernel forced (no f16 K/V copy), build-allq
+args: -fa on --parallel 1 -cram 0 --no-mmproj -ngl 99
+9B C q4/q4 ub128 VEC | build-allq | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/qwythos-9b-outq4k.gguf -ot blk\.[45]\.=CPU,blk\.1[3467]\.=CPU -ctk q4_0 -ctv q4_0 -ub 128 | 49152,65536,81920,98304,114688,131072
+9B C q4/q4 ub512 VEC | build-allq | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/qwythos-9b-outq4k.gguf -ot blk\.[45]\.=CPU,blk\.1[3467]\.=CPU -ctk q4_0 -ctv q4_0 | 49152,65536,81920,98304,114688,131072

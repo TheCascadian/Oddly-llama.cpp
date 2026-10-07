@@ -1,0 +1,6 @@
+title: E3: 7B at 12K, K dot product over 8 threads per row instead of 32 (build-exp) against build-live
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -t 6 -fa 1 -p 0 -n 32 -r 2 -d 12288
+live | build-live | |
+kq8 | build-exp | |
+live-2 | build-live | |
+kq8-2 | build-exp | |

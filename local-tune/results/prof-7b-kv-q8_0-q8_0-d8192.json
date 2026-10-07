@@ -1,0 +1,244 @@
+{
+ "trace": "/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/kv-q8_0-q8_0.tsv",
+ "tokens": 28,
+ "logits_bytes": 606660,
+ "wall_ms": 22.70197185714286,
+ "gpu_busy_ms": 22.29401192857143,
+ "kernels_per_token": 678.0,
+ "sync_per_token": 18.0,
+ "sync_ms": 22.06170710714286,
+ "gap_us_median": 0.352,
+ "gap_ms_total": 0.21324589285714288,
+ "kernels": [
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, true, true, false, false>",
+   "calls": 28.0,
+   "ms": 7.152905785714285,
+   "us_per_call": 255.46092091836735,
+   "grid": [
+    "18944,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 256,
+   "local": 0
+  },
+  {
+   "name": "flash_attn_ext_vec<128, 1, (ggml_type)8, (ggml_type)8, false>",
+   "calls": 28.0,
+   "ms": 6.1640833214285715,
+   "us_per_call": 220.14583290816324,
+   "grid": [
+    "1,5,28"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 2304,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, true, false, false, false>",
+   "calls": 132.0,
+   "ms": 5.732285,
+   "us_per_call": 43.42640151515151,
+   "grid": [
+    "3584,1,1",
+    "512,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)14, 1, false, false, false, false>",
+   "calls": 1.0,
+   "ms": 1.6684036785714287,
+   "us_per_call": 1668.4036785714286,
+   "grid": [
+    "151665,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)13, 1, true, false, false, false>",
+   "calls": 7.0,
+   "ms": 0.53098675,
+   "us_per_call": 75.85525,
+   "grid": [
+    "3584,1,1",
+    "512,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "quantize_q8_1",
+   "calls": 169.0,
+   "ms": 0.31038825,
+   "us_per_call": 1.8366168639053255,
+   "grid": [
+    "14,1,1",
+    "74,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "rms_norm_f32<1024, true, false>",
+   "calls": 57.0,
+   "ms": 0.2400432142857143,
+   "us_per_call": 4.211284461152883,
+   "grid": [
+    "1,1,1"
+   ],
+   "block": [
+    "1024,1,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "k_set_rows_quant<long, block_q8_0, 32, &quantize_f32_q8_0_block>",
+   "calls": 56.0,
+   "ms": 0.12511457142857144,
+   "us_per_call": 2.2341887755102037,
+   "grid": [
+    "1,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "rope_neox<true, false, float, float>",
+   "calls": 56.0,
+   "ms": 0.09824314285714285,
+   "us_per_call": 1.754341836734694,
+   "grid": [
+    "28,1,1",
+    "4,1,1"
+   ],
+   "block": [
+    "1,256,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "fwht_cuda<64, float, false>",
+   "calls": 56.0,
+   "ms": 0.08546289285714286,
+   "us_per_call": 1.526123086734694,
+   "grid": [
+    "14,1,1",
+    "2,1,1"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "fwht_cuda<128, float, false>",
+   "calls": 56.0,
+   "ms": 0.08251221428571429,
+   "us_per_call": 1.4734323979591837,
+   "grid": [
+    "1,1,1",
+    "7,1,1"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "flash_attn_combine_results<128>(float const*, float2 const*, float*, int)",
+   "calls": 28.0,
+   "ms": 0.06602660714285714,
+   "us_per_call": 2.358093112244898,
+   "grid": [
+    "1,28,1"
+   ],
+   "block": [
+    "128,1,1"
+   ],
+   "shmem": 40,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, false, false, false, false>",
+   "calls": 1.0,
+   "ms": 0.031689357142857144,
+   "us_per_call": 31.68935714285714,
+   "grid": [
+    "3584,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "k_get_rows_float<float, float>",
+   "calls": 2.0,
+   "ms": 0.004016964285714286,
+   "us_per_call": 2.008482142857143,
+   "grid": [
+    "1,14,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "k_bin_bcast<&op_add, float, float, float, float const*>",
+   "calls": 1.0,
+   "ms": 0.0018501785714285714,
+   "us_per_call": 1.8501785714285712,
+   "grid": [
+    "14,1,1"
+   ],
+   "block": [
+    "128,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  }
+ ],
+ "memcpy": {
+  "host_to_device": {
+   "calls": 8.0,
+   "bytes": 113176.0,
+   "ms": 0.012323285714285714
+  },
+  "device_to_host": {
+   "calls": 1.0,
+   "bytes": 606660.0,
+   "ms": 0.046795642857142855
+  }
+ },
+ "api": {},
+ "mem_events": {}
+}

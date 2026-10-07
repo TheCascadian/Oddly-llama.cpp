@@ -1,0 +1,227 @@
+{
+ "trace": "/tmp/claude-1000/-home-wrekt-src-Oddly-llama-cpp/f683f725-6dbc-4223-881d-61b2264915d1/scratchpad/tr/kv-f16-f16.tsv",
+ "tokens": 28,
+ "logits_bytes": 606660,
+ "wall_ms": 21.9751685,
+ "gpu_busy_ms": 21.66840260714286,
+ "kernels_per_token": 538.0,
+ "sync_per_token": 14.0,
+ "sync_ms": 21.537329678571428,
+ "gap_us_median": 0.256,
+ "gap_ms_total": 0.16457439285714287,
+ "kernels": [
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, true, true, false, false>",
+   "calls": 28.0,
+   "ms": 7.162484714285714,
+   "us_per_call": 255.8030255102041,
+   "grid": [
+    "18944,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 256,
+   "local": 0
+  },
+  {
+   "name": "flash_attn_ext_vec<128, 1, (ggml_type)1, (ggml_type)1, false>",
+   "calls": 28.0,
+   "ms": 5.813889071428572,
+   "us_per_call": 207.63889540816325,
+   "grid": [
+    "1,5,28"
+   ],
+   "block": [
+    "32,4,1"
+   ],
+   "shmem": 8448,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, true, false, false, false>",
+   "calls": 132.0,
+   "ms": 5.686842214285715,
+   "us_per_call": 43.08213798701299,
+   "grid": [
+    "3584,1,1",
+    "512,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)14, 1, false, false, false, false>",
+   "calls": 1.0,
+   "ms": 1.662108607142857,
+   "us_per_call": 1662.108607142857,
+   "grid": [
+    "151665,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)13, 1, true, false, false, false>",
+   "calls": 7.0,
+   "ms": 0.5323244285714285,
+   "us_per_call": 76.0463469387755,
+   "grid": [
+    "3584,1,1",
+    "512,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "quantize_q8_1",
+   "calls": 169.0,
+   "ms": 0.3078956428571428,
+   "us_per_call": 1.821867709213863,
+   "grid": [
+    "14,1,1",
+    "74,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "rms_norm_f32<1024, true, false>",
+   "calls": 57.0,
+   "ms": 0.24260664285714287,
+   "us_per_call": 4.256256892230576,
+   "grid": [
+    "1,1,1"
+   ],
+   "block": [
+    "1024,1,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "flash_attn_combine_results<128>(float const*, float2 const*, float*, int)",
+   "calls": 28.0,
+   "ms": 0.06695235714285715,
+   "us_per_call": 2.391155612244898,
+   "grid": [
+    "1,28,1"
+   ],
+   "block": [
+    "128,1,1"
+   ],
+   "shmem": 40,
+   "local": 0
+  },
+  {
+   "name": "rope_neox<true, false, float, __half>",
+   "calls": 28.0,
+   "ms": 0.054563464285714285,
+   "us_per_call": 1.9486951530612246,
+   "grid": [
+    "4,1,1"
+   ],
+   "block": [
+    "1,256,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "rope_neox<true, false, float, float>",
+   "calls": 28.0,
+   "ms": 0.051091642857142856,
+   "us_per_call": 1.8247015306122447,
+   "grid": [
+    "28,1,1"
+   ],
+   "block": [
+    "1,256,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "k_set_rows<float, long, __half>",
+   "calls": 28.0,
+   "ms": 0.05024135714285714,
+   "us_per_call": 1.7943341836734694,
+   "grid": [
+    "2,1,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "mul_mat_vec_q<(ggml_type)12, 1, false, false, false, false>",
+   "calls": 1.0,
+   "ms": 0.03150421428571429,
+   "us_per_call": 31.504214285714287,
+   "grid": [
+    "3584,1,1"
+   ],
+   "block": [
+    "32,2,1"
+   ],
+   "shmem": 128,
+   "local": 0
+  },
+  {
+   "name": "k_get_rows_float<float, float>",
+   "calls": 2.0,
+   "ms": 0.004069678571428571,
+   "us_per_call": 2.034839285714286,
+   "grid": [
+    "1,14,1"
+   ],
+   "block": [
+    "256,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  },
+  {
+   "name": "k_bin_bcast<&op_add, float, float, float, float const*>",
+   "calls": 1.0,
+   "ms": 0.0018285714285714288,
+   "us_per_call": 1.8285714285714287,
+   "grid": [
+    "14,1,1"
+   ],
+   "block": [
+    "128,1,1"
+   ],
+   "shmem": 0,
+   "local": 0
+  }
+ ],
+ "memcpy": {
+  "host_to_device": {
+   "calls": 6.0,
+   "bytes": 31256.0,
+   "ms": 0.0040354642857142855
+  },
+  "device_to_host": {
+   "calls": 1.0,
+   "bytes": 606660.0,
+   "ms": 0.04699457142857143
+  }
+ },
+ "api": {},
+ "mem_events": {}
+}

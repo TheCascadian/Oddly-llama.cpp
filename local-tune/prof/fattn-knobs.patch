@@ -1,0 +1,58 @@
+diff --git a/ggml/src/ggml-cuda/fattn-common.cuh b/ggml/src/ggml-cuda/fattn-common.cuh
+index 269ce5414..deb9cfb11 100644
+--- a/ggml/src/ggml-cuda/fattn-common.cuh
++++ b/ggml/src/ggml-cuda/fattn-common.cuh
+@@ -1179,6 +1179,12 @@ void launch_fattn(
+             parallel_blocks = 1;
+         }
+ 
++        // Experiment knob: force the number of parallel blocks along the KV axis.
++        static const int parallel_blocks_env = getenv("GGML_CUDA_FATTN_PB") ? atoi(getenv("GGML_CUDA_FATTN_PB")) : 0;
++        if (parallel_blocks_env > 0) {
++            parallel_blocks = std::min(parallel_blocks_env, ntiles_KV);
++        }
++
+         blocks_num.x = ntiles_x;
+         blocks_num.y = parallel_blocks;
+         blocks_num.z = ntiles_z_gqa*K->ne[2]*Q->ne[3];
+diff --git a/ggml/src/ggml-cuda/fattn-vec.cuh b/ggml/src/ggml-cuda/fattn-vec.cuh
+index 69dd93686..d61664eeb 100644
+--- a/ggml/src/ggml-cuda/fattn-vec.cuh
++++ b/ggml/src/ggml-cuda/fattn-vec.cuh
+@@ -78,8 +78,15 @@ static __global__ void flash_attn_ext_vec(
+     constexpr int nthreads_KQ_q = 4;
+ #endif // RDNA
+     constexpr int nthreads_V_q  = (D/4 < 32 ? D/4 : 32);
++#else
++#ifndef GGML_CUDA_FATTN_ABLATE
++#define GGML_CUDA_FATTN_ABLATE 0
++#endif
++#ifdef GGML_CUDA_FATTN_VEC_NT_KQ
++    constexpr int nthreads_KQ_q = GGML_CUDA_FATTN_VEC_NT_KQ;
+ #else
+     constexpr int nthreads_KQ_q = (D/4 < 32 ? D/4 : 32);
++#endif // GGML_CUDA_FATTN_VEC_NT_KQ
+     constexpr int nthreads_V_q  = (D/4 < 32 ? D/4 : 32);
+ #endif // GGML_USE_HIP
+ 
+@@ -270,7 +277,11 @@ static __global__ void flash_attn_ext_vec(
+ 
+ #pragma unroll
+             for (int j = 0; j < ncols; ++j) {
++#if GGML_CUDA_FATTN_ABLATE == 2
++                float sum = Q_ds[j][0].x; // timing-only ablation: no K read, no dot product
++#else
+                 float sum = vec_dot_KQ(K + i_KQ*nb11, Q_reg[j], Q_i32[j], Q_ds[j]);
++#endif
+                 sum = warp_reduce_sum<nthreads_KQ>(sum);
+ 
+                 if (use_logit_softcap) {
+@@ -322,7 +333,7 @@ static __global__ void flash_attn_ext_vec(
+ #endif // GGML_USE_HIP
+ 
+ #pragma unroll
+-        for (int k0 = 0; k0 < WARP_SIZE; k0 += V_cols_per_iter) {
++        for (int k0 = 0; k0 < (GGML_CUDA_FATTN_ABLATE == 1 ? 0 : WARP_SIZE); k0 += V_cols_per_iter) { // ablation 1: no V read
+             const int k = threadIdx.y*WARP_SIZE + k0 + (nthreads_V == WARP_SIZE ? 0 : threadIdx.x / nthreads_V);
+ 
+ #ifdef V_DOT2_F32_F16_AVAILABLE

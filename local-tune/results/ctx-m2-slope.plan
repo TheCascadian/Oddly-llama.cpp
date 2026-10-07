@@ -1,0 +1,6 @@
+title: compute buffer against context for each model, ub 64 (load only)
+args: -fa on --parallel 1 -cram 0 --no-mmproj -ngl 99 -ub 64 LOADONLY
+9B C q8/q8 | build-live | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/qwythos-9b-outq4k.gguf -ot blk\.[45]\.=CPU,blk\.1[3467]\.=CPU -ctk q8_0 -ctv q8_0 | 8192,32768
+9B C f16/f16 fa | build-live | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/qwythos-9b-outq4k.gguf -ot blk\.[45]\.=CPU,blk\.1[3467]\.=CPU -ctk f16 -ctv f16 | 8192,24576
+7B q8/q4 | build-live | -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ctk q8_0 -ctv q4_0 | 8192,16384,32768,49152
+4B q8/q8 | build-live | -m /home/wrekt/odysseus-local/models/Qwen3.5-4B-Q4_K_M.gguf -ctk q8_0 -ctv q8_0 | 8192,32768,65536

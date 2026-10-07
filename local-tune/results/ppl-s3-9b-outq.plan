@@ -1,0 +1,4 @@
+title: S3 correctness: 9B perplexity, Q6_K output matrix against Q4_K output matrix (16 chunks)
+args: -f local-tune/results/ppl-corpus.txt -c 4096 -b 512 --chunks 16 -t 6 -fa on -ctk q8_0 -ctv q8_0
+q6 e1-drop9 | build-live | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 30 -ot blk\.[4568]\.=CPU
+q4 6blk | build-live | -m build-exp/qwythos-9b-outq4k.gguf -ngl 99 -ot blk\.[45]\.=CPU,blk\.1[3467]\.=CPU

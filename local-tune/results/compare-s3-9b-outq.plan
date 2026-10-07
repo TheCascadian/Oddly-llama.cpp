@@ -1,0 +1,12 @@
+title: S3 bench: 9B output matrix Q6_K against Q4_K (250 MiB smaller), same placement and placements with more blocks on the GPU (CPU MiB in the label)
+args: -ctk q8_0 -ctv q8_0 -t 6 -fa 1 -p 0 -n 32 -r 3 -d 0,8192,15360
+A q6 e1-drop9 cpu903 | build-live | | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 30 -ot blk\.[4568]\.=CPU
+q6 7blk cpu821 | build-live | | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 99 -ot blk\.[458]\.=CPU;blk\.1[3467]\.=CPU
+B q4 e1-drop9 cpu903 | build-live | | -m build-exp/qwythos-9b-outq4k.gguf -ngl 30 -ot blk\.[4568]\.=CPU
+C q4 6blk cpu704 | build-live | | -m build-exp/qwythos-9b-outq4k.gguf -ngl 99 -ot blk\.[45]\.=CPU;blk\.1[3467]\.=CPU
+C q4 5blk cpu587 | build-live | | -m build-exp/qwythos-9b-outq4k.gguf -ngl 99 -ot blk\.[45]\.=CPU;blk\.1[367]\.=CPU
+A q6 e1-drop9 cpu903-2 | build-live | | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 30 -ot blk\.[4568]\.=CPU
+q6 7blk cpu821-2 | build-live | | -m /home/wrekt/.lmstudio/models/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF/Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf -ngl 99 -ot blk\.[458]\.=CPU;blk\.1[3467]\.=CPU
+B q4 e1-drop9 cpu903-2 | build-live | | -m build-exp/qwythos-9b-outq4k.gguf -ngl 30 -ot blk\.[4568]\.=CPU
+C q4 6blk cpu704-2 | build-live | | -m build-exp/qwythos-9b-outq4k.gguf -ngl 99 -ot blk\.[45]\.=CPU;blk\.1[3467]\.=CPU
+C q4 5blk cpu587-2 | build-live | | -m build-exp/qwythos-9b-outq4k.gguf -ngl 99 -ot blk\.[45]\.=CPU;blk\.1[367]\.=CPU

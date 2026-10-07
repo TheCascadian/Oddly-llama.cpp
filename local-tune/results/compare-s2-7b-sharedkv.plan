@@ -1,0 +1,6 @@
+title: S2: 7B, one K/V row load shared by the 7 query heads of a KV head (build-exp) against the per-head kernel in the same build
+args: -m /home/wrekt/.lmstudio/models/mradermacher/DeepSeek-R1-Distill-Qwen-7B-Uncensored-i1-GGUF/DeepSeek-R1-Distill-Qwen-7B-Uncensored.i1-Q4_K_S.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -t 6 -fa 1 -p 0 -n 32 -r 3 -d 0,12288,15360
+per-head | build-exp | GGML_CUDA_NO_FATTN_SHARED_KV=1 |
+shared-kv | build-exp | |
+per-head-2 | build-exp | GGML_CUDA_NO_FATTN_SHARED_KV=1 |
+shared-kv-2 | build-exp | |
