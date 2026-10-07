@@ -1,10 +1,10 @@
 <div align="center">
 
-# Oddly-llama.cpp: `local-1660ti`
+# Wrekt-llama.cpp
 
 **llama.cpp tuned for a 6 GB GTX 1660 Ti and a Ryzen 5 7600X.** Every change here was measured on that one machine, then kept or dropped on the numbers.
 
-![branch](https://img.shields.io/badge/branch-local--1660ti-0b7a75)
+![base](https://img.shields.io/badge/based%20on-Oddly--llama.cpp-0b7a75)
 ![gpu](https://img.shields.io/badge/GPU-GTX%201660%20Ti%206%20GB-76b900?logo=nvidia&logoColor=white)
 ![cpu](https://img.shields.io/badge/CPU-Ryzen%205%207600X-ed1c24?logo=amd&logoColor=white)
 ![measured](https://img.shields.io/badge/measured-2026--10--06-3b5bdb)
@@ -16,9 +16,19 @@
 </div>
 
 > [!NOTE]
-> This README describes the `local-1660ti` branch only. The text under "Upstream README" is the unchanged fork README. Numbers are single passes of 3 repetitions on one card; differences under about 3% are noise.
+> Numbers are single passes of 3 repetitions on one card; differences under about 3% are noise.
 
-## What is different on this branch
+## Where this comes from
+
+| Project | What it is |
+|---|---|
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) | The original project. Build, usage and backend documentation are in [docs/](docs/). |
+| [Oddly-llama.cpp](https://github.com/cpntodd/Oddly-llama.cpp) | The fork this repository is based on. It adds Intel Arc and other backend work. |
+| Wrekt-llama.cpp | This repository: the Oddly-llama.cpp code plus the changes, tools and measurements below, all in [local-tune/](local-tune/). |
+
+The README that came with the code is folded away [at the end of this page](#readme-of-llamacpp).
+
+## What is different here
 
 | # | Change | Effect | Where |
 |---|---|---|---|
@@ -29,7 +39,7 @@
 | 5 | GPU overclock (memory +2300, core +105, 120 W), found by an automated stability sweep | 7B decode 43.8 to 50.7 t/s | [overclock](#overclock-found-by-script-checked-by-perplexity) |
 
 <details>
-<summary><b>All 19 measured changes of 2026-10-06, with verdicts</b></summary>
+<summary><b>All 26 measured changes of 2026-10-06, with verdicts</b></summary>
 
 <br>
 
@@ -54,8 +64,44 @@
 | F1 | 12:50-13:22 | Overclock, first sweep at a 100 W limit | Saved | 43.8 to 47.5 t/s (+8%), memory to +1500 cap, core limit +120 |
 | F2 | 13:25-13:46 | Overclock resumed at 120 W, upward only | Saved | 50.7 t/s, +16% over stock at 100 W; saved mem +2300, core +105 |
 | G1 | 13:56 | Full local-model benchmark, current state | Reference | +5-14% over the 11:21 run, probably from the overclock |
+| H1 | evening | Guard verdict read from one token | Applied | tool-call check about 45 ms with the prompt cached, same verdicts on all 34 cases |
+| H2 | evening | Physical batch size on the 4B (-ub 256 to 2048) | No gain | 955 to 971 t/s for every value |
+| H3 | evening | Slot count on MiniCPM and the guard | Not applied | long output 322 to 659 t/s at 8 to 32 slots, routing falls from 24.4 to 18.0 items/s |
+| H4 | evening | Link-time optimisation build | No gain | guard on CPU 127 vs 127 t/s, 4B on GPU unchanged |
+| H5 | evening | Sampling on the GPU (-bs) | No gain | every model within 3% |
+| H6 | evening | Matrix-vector kernel shape (1, 4, 8 warps) | No gain | 2 warps, the current value, is fastest on all three models |
+| H7 | evening | Output layer limited to the allowed tokens | No-go | dropped before any code: about 2-3% of a guard or routing request |
 
 Verdicts: **Applied** is in the gateway settings or the build. **Saved** is a stored overclock state. **No gain** and **No-go** were measured and dropped. **Not applied** worked but was left out with a reason, see [TRIALS.md](local-tune/TRIALS.md).
+
+</details>
+
+## Models and job checks
+
+Eight models are served through one gateway ([`gateway.py`](local-tune/gateway.py), one `models.conf` line each). [`suite.py`](local-tune/suite.py) measures each one three ways: raw speed, speed through the gateway, and small fixed job checks from [`jobs.py`](local-tune/jobs.py). The [assessment](local-tune/ASSESSMENT.md) is generated from those result files.
+
+<img src="local-tune/img/models.svg" alt="Writing speed of kept, added, rejected and dropped models" width="860">
+
+| Model | Job | Writes | Reads | All slots | Job checks |
+|---|---|---|---|---|---|
+| qwen3.5-4b (added) | agent, tool calls, code | 78.4 t/s | 986 t/s | | tools 6/6, code 4/4 |
+| minicpm5-2b (added) | routing, tool calls | 136 t/s | 1,970 t/s | 305 t/s (8) | routing 16/16, tools 6/6 |
+| virbiusguard (added) | checks every tool call before it runs | 348 t/s | 6,504 t/s | 640 t/s (4) | attacks 11/12, no safe input blocked |
+| gemma4-e2b | swarm worker | 137 t/s | 2,032 t/s | 349 t/s (8) | routing 16/16, tools 6/6 |
+| qwythos-9b | large model, 25 layers on the GPU | 26.4 t/s | 541 t/s | | tools 6/6, code 3/4 |
+| deepseek-coder-1.3b | code completion | 167 t/s | 3,027 t/s | 465 t/s (4) | code 3/4 |
+
+Embedding (embeddinggemma-300m, 454 items/s) and reranking (qwen3-reranker-0.6b, 38.9 items/s) are served too. Three more candidates were tested and not added; the assessment lists them with the reasons. Speeds are from the suite run with every model on the GPU; the guard was moved to the CPU afterwards.
+
+<details>
+<summary><b>The guard verdict, and what the backend plan found</b></summary>
+
+<br>
+
+- **One-token verdict.** The guard prompt ends with `{"hit_rule":` and the request asks for one token with its probabilities. The probability of `true` against a limit of 0.5 is the verdict. A check takes about 45 ms with the prompt cached (214 to 239 ms before), with the same verdict on all 34 test cases. The guard runs on the CPU, so it never pushes the agent model out of VRAM.
+- **Known misses.** Two attack tool calls score under 0.001 and pass, and one safe call scores 0.54 and is flagged. No limit beats 0.5 on the test set (30 of 34).
+- **Backend plan.** Six backend changes for the added models were planned with a goal, a baseline rerun and a pass rule each ([BACKEND-PLAN.md](local-tune/BACKEND-PLAN.md)). None was kept: rows H2 to H7 above, details in [TRIALS.md, section 2e](local-tune/TRIALS.md).
+- **Where the time goes.** The 4B writes at 77% of the card's memory rate (222 of 288 GB/s), so little is left in the kernels. The small models are limited by fixed cost per token, which more slots recover.
 
 </details>
 
@@ -140,13 +186,26 @@ It needs the proprietary NVIDIA driver, `sudo`, a GGUF that fits in VRAM and a f
 - `local-tune/bench.sh <build-dir> <label>` runs the four standard models; `compare.py`, `ppl.py` and `spectest.py` run A/B, perplexity and server-side trials. See [local-tune/README.md](local-tune/README.md#reproduce).
 - `python3 local-tune/suite.py run <name>` tests every model in `models.conf` (speed, served speed, job checks); `python3 local-tune/assess.py <new> <base>` writes the [assessment](local-tune/ASSESSMENT.md) and its picture.
 - `python3 local-tune/watch.py` is the live terminal view of whatever run is newest.
-- The interactive [report](local-tune/report.html) has the same data with expandable changes and hover charts. Open it locally in a browser, or through an HTML previewer such as `https://htmlpreview.github.io/?https://github.com/TheCascadian/Oddly-llama.cpp/blob/local-1660ti/local-tune/report.html`.
+- The interactive [report](local-tune/report.html) has the same data with expandable changes and hover charts. Open it locally in a browser, or through an HTML previewer such as `https://htmlpreview.github.io/?https://github.com/TheCascadian/Wrekt-llama.cpp/blob/master/local-tune/report.html`.
 
 </details>
 
----
+## Build
 
-# Upstream README
+```sh
+local-tune/build.sh        # Release, CUDA for sm_75, native CPU flags
+```
+
+Other platforms and backends build as in llama.cpp: [docs/build.md](docs/build.md). The license is MIT, as upstream ([LICENSE](LICENSE), [AUTHORS](AUTHORS)).
+
+## README of llama.cpp
+
+The README that came with the code, unchanged, as carried by the [Oddly-llama.cpp](https://github.com/cpntodd/Oddly-llama.cpp) fork.
+
+<details>
+<summary><b>Show the llama.cpp README</b></summary>
+
+<br>
 
 # llama.cpp
 
@@ -291,3 +350,5 @@ The `llama.cpp` project is build on top of the [ggml](https://github.com/ggml-or
 - [nlohmann/json](https://github.com/nlohmann/json) - Single-header JSON library, used by various tools/examples - MIT License
 - [mackron/miniaudio](https://github.com/mackron/miniaudio) - Single-header audio format decoder, used by multimodal subsystem - Public domain
 - [sheredom/subprocess.h](https://github.com/sheredom/subprocess.h) - Single-header process launching solution for C and C++ - Public domain
+
+</details>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild Oddly-llama.cpp tuned for: Ryzen 5 7600X + GTX 1660 Ti (sm_75, no tensor cores), CUDA from /opt/cuda.
+# Rebuild Wrekt-llama.cpp tuned for: Ryzen 5 7600X + GTX 1660 Ti (sm_75, no tensor cores), CUDA from /opt/cuda.
 # usage: local-tune/build.sh [build-dir]   (default: build)
 set -euo pipefail
 cd "$(dirname "$0")/.."

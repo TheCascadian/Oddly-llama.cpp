@@ -331,7 +331,7 @@ def markdown(d):
     for m in order:
         for j, (score, note) in m["jobs"].items():
             L.append(f"| {m['name']} | {STATUS[m['status']]} | {jobs.TITLE[j]} | **{score}** | {note} |")
-    L += ["", "## Trials", "", f"{sum(d['tally'].values())} trials have a verdict in the [branch README](../README.md): " + ", ".join(f"{v} {k.lower()}" for k, v in d["tally"].items()) + ". Each one is described in [TRIALS.md](TRIALS.md).", "",
+    L += ["", "## Trials", "", f"{sum(d['tally'].values())} trials have a verdict in the [README](../README.md): " + ", ".join(f"{v} {k.lower()}" for k, v in d["tally"].items()) + ". Each one is described in [TRIALS.md](TRIALS.md).", "",
           "## Edits without a speed number", "", "| Area | What changed |", "|---|---|"] + [f"| {a} | {b} |" for a, b in d["edits"]]
     L += ["", "## Commits in the period", "", "| Commit | When | Subject |", "|---|---|---|"] + [f"| `{h}` | {t} | {sub} |" for h, t, sub in d["commits"]]
     L += ["", "## Run it yourself", "", "```", "cp local-tune/models.example.conf local-tune/models.conf   # list your GGUF files",

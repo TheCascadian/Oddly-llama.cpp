@@ -1,5 +1,5 @@
 {
- "title": "Oddly-llama.cpp on a 6 GB GTX 1660 Ti",
+ "title": "Wrekt-llama.cpp on a 6 GB GTX 1660 Ti",
  "since": "2026-10-05 12:00",
  "new_run": "shortlist",
  "base_run": "e2e",
@@ -9,7 +9,7 @@
   "threads": 12,
   "ram_gb": 62,
   "kernel": "6.18.52-1-cachyos-lts",
-  "commit": "d0ab9a678",
+  "commit": "f1e7c17df",
   "branch": "local-1660ti",
   "gpu": "GTX 1660 Ti",
   "vram_mb": 6144,
@@ -518,10 +518,10 @@
   }
  ],
  "tally": {
-  "Applied": 3,
-  "No gain": 6,
-  "No-go": 5,
-  "Not applied": 2,
+  "Applied": 4,
+  "No gain": 10,
+  "No-go": 6,
+  "Not applied": 3,
   "Saved": 2,
   "Reference": 1
  },
@@ -564,6 +564,16 @@
   ]
  ],
  "commits": [
+  [
+   "f1e7c17df",
+   "10-06 17:23",
+   "local-tune: one-token guard verdict and the backend plan with its trials (none kept)"
+  ],
+  [
+   "481d872d6",
+   "10-06 17:23",
+   "local-tune: gateway in the repo, end-to-end suite with job checks, and an assessment report for the added models"
+  ],
   [
    "d0ab9a678",
    "10-06 14:18",

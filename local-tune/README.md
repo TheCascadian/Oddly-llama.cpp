@@ -1,6 +1,6 @@
 # Local tuning: Ryzen 5 7600X + GTX 1660 Ti (6 GB), CachyOS
 
-Three code changes live on this branch, plus a GPU overclock that is a setting and not code (see "GPU overclock" below). All are measured on this machine only.
+Three code changes live in this repository, plus a GPU overclock that is a setting and not code (see "GPU overclock" below). All are measured on this machine only.
 The interactive version of these results is [report.html](report.html); the overview with charts is in the repository [README](../README.md).
 Trials that did not ship and ideas not yet measured are in [TRIALS.md](TRIALS.md).
 The current state in one page, with every model old and new and one picture, is [ASSESSMENT.md](ASSESSMENT.md) (see "Models, suite and assessment").
