@@ -1,3 +1,5 @@
+> **Superseded** by [UNIFIED.md](../UNIFIED.md) (§§6-8) on 2026-10-07. Kept for history; relative links below may be stale.
+
 # Experiment discovery: where decode time goes on the 7600X + GTX 1660 Ti
 
 Date: 2026-10-06. Tree `d954ac6f4` (master), `build-live` (llama-bench build `bafd6a875`), CUDA Graphs on.

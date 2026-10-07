@@ -1,3 +1,5 @@
+> **Superseded** by [UNIFIED.md](../UNIFIED.md) (§7) on 2026-10-07. Kept for history; relative links below may be stale.
+
 # Trials: what was planned, what was measured, what is still open
 
 Companion to [README.md](README.md). The README describes the two changes that shipped; this file records the plan behind them, the trials that did not ship, and the ideas nobody has measured yet.

@@ -1,3 +1,5 @@
+> **Superseded** by [UNIFIED.md](../UNIFIED.md) (§§1-5, 12) on 2026-10-07. Kept for history; relative links below may be stale.
+
 # Local tuning: Ryzen 5 7600X + GTX 1660 Ti (6 GB), CachyOS
 
 Three code changes live in this repository, plus a GPU overclock that is a setting and not code (see "GPU overclock" below). All are measured on this machine only.

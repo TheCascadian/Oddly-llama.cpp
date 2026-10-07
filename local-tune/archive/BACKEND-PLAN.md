@@ -1,3 +1,5 @@
+> **Superseded** by [UNIFIED.md](../UNIFIED.md) (§§7, 10) on 2026-10-07. Kept for history; relative links below may be stale.
+
 # Backend plan for the added models
 
 Six backend changes for qwen3.5-4b, minicpm5-2b and virbiusguard on the GTX 1660 Ti. Each one has a goal in numbers, a
