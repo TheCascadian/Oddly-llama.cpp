@@ -9,9 +9,20 @@
 ![cpu](https://img.shields.io/badge/CPU-Ryzen%205%207600X-ed1c24?logo=amd&logoColor=white)
 ![measured](https://img.shields.io/badge/measured-2026--10--06-3b5bdb)
 
-<img src="local-tune/img/speedups.svg" alt="Speed-up of each kept change: 9B code edit 7.0x, 3B code edit 3.2x, 7B at 15K context 1.81x, 7B empty context 1.53x, 7B clocks 1.16x, 9B 1.16x and 1.15x" width="860">
+<a href="local-tune/UNIFIED.html"><img src="local-tune/img/win98-results-dark.png" alt="UNIFIED.html as a Windows 98 desktop: the Results window with the speed-up of each kept change (9B code edit 7.0x, 3B code edit 3.2x, 7B at 15K context 1.81x, 7B empty context 1.53x, 7B clocks 1.16x)" width="860"></a>
 
-[Assessment](local-tune/archive/ASSESSMENT.md) · [Full report](local-tune/archive/report.html) · [Unified record](local-tune/UNIFIED.md) · [Every trial](local-tune/UNIFIED.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
+[Assessment](local-tune/archive/ASSESSMENT.md) · [Full report](local-tune/archive/report.html) · [Unified record](local-tune/UNIFIED.md) · [Win98 page](local-tune/UNIFIED.html) · [Every trial](local-tune/UNIFIED.md) · [Overclock kit](local-tune/oc-kit/AGENT.md)
+
+</div>
+
+<div align="center">
+
+| | |
+|---|---|
+| <img src="local-tune/img/win98-allstats.png" alt="All Stats window" width="420"> | <img src="local-tune/img/win98-lab.png" alt="MiniCPM Lab window" width="420"> |
+| **All Stats**: every model and test on one chart | **MiniCPM Lab**: quantization variants, ngram, context |
+
+[UNIFIED.html](local-tune/UNIFIED.html) is the whole record as one Windows 98 desktop page. Open it in a browser; windows drag, and the taskbar has a light/dark switch.
 
 </div>
 
@@ -80,7 +91,7 @@ Verdicts: **Applied** is in the gateway settings or the build. **Saved** is a st
 
 Eight models are served through one gateway ([`gateway.py`](local-tune/scripts/gateway.py), one `models.conf` line each). [`suite.py`](local-tune/scripts/suite.py) measures each one three ways: raw speed, speed through the gateway, and small fixed job checks from [`jobs.py`](local-tune/scripts/jobs.py). The [assessment](local-tune/archive/ASSESSMENT.md) is generated from those result files.
 
-<img src="local-tune/img/models.svg" alt="Writing speed of kept, added, rejected and dropped models" width="860">
+<img src="local-tune/img/win98-sys.png" alt="System Properties window listing every model with its status, file size, writing and reading speed and notes" width="860">
 
 | Model | Job | Writes | Reads | All slots | Job checks |
 |---|---|---|---|---|---|
@@ -124,7 +135,7 @@ flowchart LR
     H -- fail --> J[Step down, soak again]
 ```
 
-<img src="local-tune/img/overclock.svg" alt="Decode speed against memory and core offset for the 100 W and 120 W runs. Core +135 failed in both." width="860">
+<img src="local-tune/img/win98-overclock.png" alt="Overclock log window: stock 43.8 t/s, 120 W with memory +2300 and core +105 reaches 50.7 t/s, core +135 failed twice" width="860">
 
 | | Stock, 100 W | Saved |
 |---|---|---|
