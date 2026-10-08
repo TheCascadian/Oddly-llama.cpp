@@ -1,0 +1,145 @@
+variant,prompt,rep,n_predicted,tg_tps,draft_n,draft_accepted,text_md5
+none,rewrite,0,400,130.21,0,0,1a4cef4d
+none,rewrite,1,400,130.19,0,0,1a4cef4d
+none,rewrite,2,400,130.21,0,0,1a4cef4d
+none,edit,0,400,130.20,0,0,1354e521
+none,edit,1,400,130.29,0,0,1354e521
+none,edit,2,400,130.26,0,0,1354e521
+none,refactor,0,400,130.22,0,0,8151748a
+none,refactor,1,400,130.20,0,0,8151748a
+none,refactor,2,400,130.28,0,0,8151748a
+none,free,0,363,132.71,0,0,91c6a225
+none,free,1,363,132.75,0,0,91c6a225
+none,free,2,363,132.70,0,0,91c6a225
+simple n12 m48 (default),rewrite,0,400,528.21,370,354,1a4cef4d
+simple n12 m48 (default),rewrite,1,400,545.14,370,354,1a4cef4d
+simple n12 m48 (default),rewrite,2,400,543.76,370,354,1a4cef4d
+simple n12 m48 (default),edit,0,400,617.86,378,366,1354e521
+simple n12 m48 (default),edit,1,400,622.09,378,366,1354e521
+simple n12 m48 (default),edit,2,400,623.35,378,366,1354e521
+simple n12 m48 (default),refactor,0,400,310.54,324,276,10985fe4
+simple n12 m48 (default),refactor,1,400,310.77,324,276,10985fe4
+simple n12 m48 (default),refactor,2,400,311.54,324,276,10985fe4
+simple n12 m48 (default),free,0,363,131.68,0,0,91c6a225
+simple n12 m48 (default),free,1,363,131.87,0,0,91c6a225
+simple n12 m48 (default),free,2,363,131.50,0,0,91c6a225
+simple n6 m48,rewrite,0,400,592.71,424,371,1a4cef4d
+simple n6 m48,rewrite,1,400,614.00,424,371,1a4cef4d
+simple n6 m48,rewrite,2,400,611.21,424,371,1a4cef4d
+simple n6 m48,edit,0,400,717.08,384,378,1354e521
+simple n6 m48,edit,1,400,715.48,384,378,1354e521
+simple n6 m48,edit,2,400,717.88,384,378,1354e521
+simple n6 m48,refactor,0,400,315.49,373,285,0d7a46b3
+simple n6 m48,refactor,1,400,315.95,373,285,0d7a46b3
+simple n6 m48,refactor,2,400,317.24,373,285,0d7a46b3
+simple n6 m48,free,0,351,131.07,39,2,8b1dd368
+simple n6 m48,free,1,351,130.93,39,2,8b1dd368
+simple n6 m48,free,2,351,130.97,39,2,8b1dd368
+simple n8 m48,rewrite,0,400,557.74,422,365,1a4cef4d
+simple n8 m48,rewrite,1,400,574.81,422,365,1a4cef4d
+simple n8 m48,rewrite,2,400,574.50,422,365,1a4cef4d
+simple n8 m48,edit,0,400,689.23,382,374,1354e521
+simple n8 m48,edit,1,400,689.05,382,374,1354e521
+simple n8 m48,edit,2,400,687.52,382,374,1354e521
+simple n8 m48,refactor,0,400,223.51,379,219,2ecaf2a7
+simple n8 m48,refactor,1,400,223.67,379,219,2ecaf2a7
+simple n8 m48,refactor,2,400,223.50,379,219,2ecaf2a7
+simple n8 m48,free,0,363,130.99,18,0,d044815b
+simple n8 m48,free,1,363,131.16,18,0,d044815b
+simple n8 m48,free,2,363,131.23,18,0,d044815b
+simple n16 m48,rewrite,0,400,475.85,366,342,1a4cef4d
+simple n16 m48,rewrite,1,400,488.34,366,342,1a4cef4d
+simple n16 m48,rewrite,2,400,489.25,366,342,1a4cef4d
+simple n16 m48,edit,0,400,573.69,374,358,1354e521
+simple n16 m48,edit,1,400,574.83,374,358,1354e521
+simple n16 m48,edit,2,400,573.01,374,358,1354e521
+simple n16 m48,refactor,0,400,290.80,320,264,10985fe4
+simple n16 m48,refactor,1,400,292.10,320,264,10985fe4
+simple n16 m48,refactor,2,400,291.98,320,264,10985fe4
+simple n16 m48,free,0,363,132.24,0,0,91c6a225
+simple n16 m48,free,1,363,132.56,0,0,91c6a225
+simple n16 m48,free,2,363,132.50,0,0,91c6a225
+simple n12 m24,rewrite,0,400,470.07,368,346,1a4cef4d
+simple n12 m24,rewrite,1,400,479.59,368,346,1a4cef4d
+simple n12 m24,rewrite,2,400,479.07,368,346,1a4cef4d
+simple n12 m24,edit,0,400,543.76,371,358,1354e521
+simple n12 m24,edit,1,400,544.84,371,358,1354e521
+simple n12 m24,edit,2,400,543.03,371,358,1354e521
+simple n12 m24,refactor,0,400,292.28,264,261,8151748a
+simple n12 m24,refactor,1,400,291.63,264,261,8151748a
+simple n12 m24,refactor,2,400,291.12,264,261,8151748a
+simple n12 m24,free,0,363,132.27,0,0,91c6a225
+simple n12 m24,free,1,363,132.34,0,0,91c6a225
+simple n12 m24,free,2,363,132.62,0,0,91c6a225
+simple n12 m96,rewrite,0,400,485.92,467,357,1a4cef4d
+simple n12 m96,rewrite,1,400,510.64,467,357,1a4cef4d
+simple n12 m96,rewrite,2,400,512.02,467,357,1a4cef4d
+simple n12 m96,edit,0,400,612.35,429,369,1354e521
+simple n12 m96,edit,1,400,610.28,429,369,1354e521
+simple n12 m96,edit,2,400,610.10,429,369,1354e521
+simple n12 m96,refactor,0,400,287.27,358,264,f2880874
+simple n12 m96,refactor,1,400,287.73,358,264,f2880874
+simple n12 m96,refactor,2,400,288.47,358,264,f2880874
+simple n12 m96,free,0,363,132.22,0,0,91c6a225
+simple n12 m96,free,1,363,132.28,0,0,91c6a225
+simple n12 m96,free,2,363,132.42,0,0,91c6a225
+simple n8 m96,rewrite,0,400,544.06,471,369,1a4cef4d
+simple n8 m96,rewrite,1,400,574.91,471,369,1a4cef4d
+simple n8 m96,rewrite,2,400,574.26,471,369,1a4cef4d
+simple n8 m96,edit,0,400,665.18,433,377,1354e521
+simple n8 m96,edit,1,400,664.52,433,377,1354e521
+simple n8 m96,edit,2,400,664.19,433,377,1354e521
+simple n8 m96,refactor,0,400,206.39,569,218,f8a9d940
+simple n8 m96,refactor,1,400,205.92,569,218,f8a9d940
+simple n8 m96,refactor,2,400,205.02,569,218,f8a9d940
+simple n8 m96,free,0,363,131.36,18,0,d044815b
+simple n8 m96,free,1,363,131.23,18,0,d044815b
+simple n8 m96,free,2,363,131.08,18,0,d044815b
+map-k,rewrite,0,400,529.40,370,354,1a4cef4d
+map-k,rewrite,1,400,561.17,354,354,1a4cef4d
+map-k,rewrite,2,400,560.61,354,354,1a4cef4d
+map-k,edit,0,400,129.59,0,0,1354e521
+map-k,edit,1,400,129.64,0,0,1354e521
+map-k,edit,2,400,129.59,0,0,1354e521
+map-k,refactor,0,400,129.59,0,0,8151748a
+map-k,refactor,1,400,129.36,0,0,8151748a
+map-k,refactor,2,400,129.56,0,0,8151748a
+map-k,free,0,363,132.14,0,0,91c6a225
+map-k,free,1,363,132.10,0,0,91c6a225
+map-k,free,2,363,132.22,0,0,91c6a225
+map-k4v,rewrite,0,400,531.02,370,354,1a4cef4d
+map-k4v,rewrite,1,400,559.66,354,354,1a4cef4d
+map-k4v,rewrite,2,400,557.06,354,354,1a4cef4d
+map-k4v,edit,0,400,129.18,0,0,1354e521
+map-k4v,edit,1,400,129.03,0,0,1354e521
+map-k4v,edit,2,400,129.15,0,0,1354e521
+map-k4v,refactor,0,400,129.23,0,0,8151748a
+map-k4v,refactor,1,400,128.95,0,0,8151748a
+map-k4v,refactor,2,400,129.01,0,0,8151748a
+map-k4v,free,0,363,131.61,0,0,91c6a225
+map-k4v,free,1,363,131.47,0,0,91c6a225
+map-k4v,free,2,363,131.76,0,0,91c6a225
+mod default,rewrite,0,400,378.69,390,319,1a4cef4d
+mod default,rewrite,1,400,839.88,415,392,1a4cef4d
+mod default,rewrite,2,400,845.73,415,392,1a4cef4d
+mod default,edit,0,400,623.06,384,367,1354e521
+mod default,edit,1,400,842.20,409,392,1354e521
+mod default,edit,2,400,844.52,409,392,1354e521
+mod default,refactor,0,400,188.58,299,163,b0e785d7
+mod default,refactor,1,400,356.55,419,312,4401b683
+mod default,refactor,2,400,455.34,442,353,27a31bfd
+mod default,free,0,363,131.62,0,0,91c6a225
+mod default,free,1,382,160.58,320,105,ad440f0c
+mod default,free,2,400,144.07,192,56,94f92820
+mod match12 n24-32,rewrite,0,400,500.90,369,349,1a4cef4d
+mod match12 n24-32,rewrite,1,400,693.82,382,375,1a4cef4d
+mod match12 n24-32,rewrite,2,400,695.31,382,375,1a4cef4d
+mod match12 n24-32,edit,0,400,565.98,390,360,1354e521
+mod match12 n24-32,edit,1,400,660.69,404,374,1354e521
+mod match12 n24-32,edit,2,400,665.93,404,374,1354e521
+mod match12 n24-32,refactor,0,400,217.56,276,199,fc08e7e5
+mod match12 n24-32,refactor,1,400,686.36,414,378,fd144b7b
+mod match12 n24-32,refactor,2,400,748.04,418,385,fd144b7b
+mod match12 n24-32,free,0,363,132.03,0,0,91c6a225
+mod match12 n24-32,free,1,400,197.67,288,168,a88f821a
+mod match12 n24-32,free,2,388,252.09,410,234,abb14343

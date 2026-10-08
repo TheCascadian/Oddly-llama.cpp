@@ -1,0 +1,10 @@
+baseline-Q4_K_M,8.9460,0.39045
+H5-imatrix-q4km,8.8702,0.38352
+H1b1-ffn_down-q6to-q5,8.9893,0.39281
+H1b2-ffn_down-q6to-q4,9.1769,0.40377
+H3c-output-q4K,9.0501,0.39501
+H6a-token_embd-q5K,8.9706,0.39209
+H7a-attn_v-q6to-q5,8.9584,0.39139
+H7b-attn_v-q6to-q4,8.9494,0.38896
+H10-stack-H1b2-H3c-H7b,9.2879,0.40715
+H11-imx-iq3s-ffn,9.5272,0.40914

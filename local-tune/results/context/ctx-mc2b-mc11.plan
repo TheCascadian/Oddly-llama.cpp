@@ -1,0 +1,6 @@
+title: MiniCPM5-2B H11-imx-iq3s-ffn context ceiling: f16, q8/q8, q8/q4, q4/q4 at -ub 512
+args: -fa on --parallel 1 -cram 0 --no-mmproj
+kv f16/f16 ub512 | build-allq | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H11-imx-iq3s-ffn.gguf -ngl 99 -ctk f16 -ctv f16 -ub 512 NOCOPY | 16384,32768,65536,98304,131072
+kv q8_0/q8_0 ub512 | build-allq | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H11-imx-iq3s-ffn.gguf -ngl 99 -ctk q8_0 -ctv q8_0 -ub 512 NOCOPY | 16384,32768,65536,98304,131072
+kv q8_0/q4_0 ub512 | build-allq | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H11-imx-iq3s-ffn.gguf -ngl 99 -ctk q8_0 -ctv q4_0 -ub 512 NOCOPY | 16384,32768,65536,98304,131072
+kv q4_0/q4_0 ub512 | build-allq | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H11-imx-iq3s-ffn.gguf -ngl 99 -ctk q4_0 -ctv q4_0 -ub 512 NOCOPY | 16384,32768,65536,98304,131072

@@ -1,0 +1,5 @@
+title: ngram speculation on MiniCPM5-2B H11-imx-iq3s-ffn (none, simple, mod match12 n24-32)
+prompts: rewrite edit refactor free
+none |
+simple n12 m48 | --spec-type ngram-simple
+mod match12 n24-32 | --spec-type ngram-mod --spec-ngram-mod-n-match 12 --spec-ngram-mod-n-min 24 --spec-ngram-mod-n-max 32

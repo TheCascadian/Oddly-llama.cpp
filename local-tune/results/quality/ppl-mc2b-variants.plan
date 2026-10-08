@@ -1,0 +1,12 @@
+title: MiniCPM5-2B variants perplexity on this GPU (repo-docs corpus, ctx 512, 16 chunks)
+args: -f local-tune/results/ppl-corpus.txt -c 512 -b 512 --chunks 16 -ngl 99 -t 6 -fa on
+baseline-Q4_K_M | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-baseline-Q4_K_M.gguf
+H5-imatrix-q4km | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H5-imatrix-q4km.gguf
+H1b1-ffn_down-q6to-q5 | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H1b1-ffn_down-q6to-q5.gguf
+H1b2-ffn_down-q6to-q4 | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H1b2-ffn_down-q6to-q4.gguf
+H3c-output-q4K | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H3c-output-q4K.gguf
+H6a-token_embd-q5K | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H6a-token_embd-q5K.gguf
+H7a-attn_v-q6to-q5 | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H7a-attn_v-q6to-q5.gguf
+H7b-attn_v-q6to-q4 | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H7b-attn_v-q6to-q4.gguf
+H10-stack-H1b2-H3c-H7b | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H10-stack-H1b2-H3c-H7b.gguf
+H11-imx-iq3s-ffn | build-exp | -m /data/LinuxWork/Models/MiniCPM5-2B/MiniCPM5-2B-H11-imx-iq3s-ffn.gguf
